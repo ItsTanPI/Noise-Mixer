@@ -70,6 +70,17 @@ textarea:focus{border-color:var(--accent)}
 .msg.err{color:var(--danger)}
 .msg.ok{color:var(--success)}
 
+/* Scrollbar Styling */
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--bg1);border-radius:5px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:5px;transition:background .2s}
+::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+/* Firefox scrollbar */
+* {
+  scrollbar-color: var(--border2) var(--bg1);
+  scrollbar-width: thin;
+}
+
 /* Mobile responsive layout */
 @media(max-width:900px){
   #app{flex-direction:column;height:100vh;overflow:hidden}

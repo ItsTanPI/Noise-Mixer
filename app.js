@@ -1242,8 +1242,6 @@ if (importJsonBtn && importJsonFile) {
         
         // Update toggles
         document.getElementById('t-invert').classList.toggle('on', gState.invert);
-        document.getElementById('t-contour').classList.toggle('on', gState.contour);
-        document.getElementById('t-warp').classList.toggle('on', gState.warp);
         
         renderLayers();
         document.getElementById('export-msg').textContent = 'Configuration loaded: ' + (data.projectName || 'Untitled');
