@@ -1,0 +1,70 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-04-12T09:01:32.090Z",
+  "projectName": "Map",
+  "description": "Noise mixer configuration exported from Noise Mixer",
+  "globalState": {
+    "res": 4,
+    "color": "terrain",
+    "offsetX": 25,
+    "offsetY": -14,
+    "zoom": 1,
+    "invert": false,
+    "contour": false,
+    "warp": false
+  },
+  "layers": [
+    {
+      "id": 2,
+      "type": "perlin",
+      "mask": "none",
+      "scale": 32,
+      "octaves": 4,
+      "falloff": 0.5,
+      "seed": 0,
+      "weight": 1,
+      "contrast": 1.25,
+      "threshold": 0,
+      "z": 0,
+      "offsetX": 0,
+      "offsetY": 0,
+      "blend": "avg",
+      "visible": true
+    },
+    {
+      "id": 1,
+      "type": "billowy",
+      "mask": "none",
+      "scale": 100,
+      "octaves": 1,
+      "falloff": 0.5,
+      "seed": 0,
+      "weight": 1,
+      "contrast": 4,
+      "threshold": 0.47,
+      "z": 0,
+      "offsetX": 0,
+      "offsetY": 0,
+      "blend": "mul",
+      "visible": true
+    },
+    {
+      "id": 0,
+      "type": "ridged",
+      "mask": "none",
+      "scale": 198,
+      "octaves": 1,
+      "falloff": 0.5,
+      "seed": 0,
+      "weight": 1,
+      "contrast": 4,
+      "threshold": 0.5,
+      "z": -3.61,
+      "offsetX": 0,
+      "offsetY": 0,
+      "blend": "mul",
+      "visible": true
+    }
+  ],
+  "customFunctions": []
+}

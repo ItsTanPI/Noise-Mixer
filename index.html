@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noise Mixer</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <div id="left">
+    <div id="canvas-wrap">
+      <canvas id="c"></canvas>
+      <!-- <div id="fps" style="position:absolute;top:8px;left:8px;font-size:12px;color:var(--accent);background:rgba(0,0,0,.6);padding:2px 6px;border-radius:4px;pointer-events:none">-- fps</div> -->
+    </div>
+    <div id="global-controls">
+      <div class="gctl"><label>Color</label>
+        <select id="g-color">
+          <option value="gray">Grayscale</option>
+          <option value="terrain">Terrain</option>
+          <option value="heat">Heat</option>
+          <option value="plasma">Plasma</option>
+          <option value="ice">Ice</option>
+          <option value="neon">Neon</option>
+        </select>
+      </div>
+      <div class="gctl"><label>Resolution</label>
+        <select id="g-res">
+          <option value="4">4px (fastest)</option>
+          <option value="2" selected>2px</option>
+          <option value="1">1px (full)</option>
+        </select>
+      </div>
+      
+      
+      <div class="gctl"><label>Pan X</label>
+        <input type="number" id="g-panx" value="0" style="width:100%;padding:5px;font-size:13px">
+      </div>
+      <div class="gctl"><label>Pan Y</label>
+        <input type="number" id="g-pany" value="0" style="width:100%;padding:5px;font-size:13px">
+      </div>
+      <div class="gctl"><label>Zoom</label>
+        <input type="range" id="g-zoom" min="0.1" max="10" step="0.1" value="1" style="cursor:pointer">
+        <span id="zoom-val" style="font-size:12px;color:var(--text2)">1x</span>
+      </div>
+      <div class="gctl"><label>Z Position</label>
+        <input type="range" id="g-z" min="-10" max="10" step="0.1" value="0" style="cursor:pointer">
+        <span id="z-val" style="font-size:14px;color:var(--text2)">0.0</span>
+      </div>
+    </div>
+    <div class="toggles">
+      <div class="tog" id="t-invert">Invert</div>
+      <div class="tog" id="t-contour">Contour</div>
+      <div class="tog" id="t-warp">Domain warp</div>
+      <div class="tog" id="t-lightmode">Light</div>
+    </div>
+  </div>
+
+  <div id="right">
+    <div class="sec">Layers &nbsp;<span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0">drag to reorder</span></div>
+    <div id="layers-list"></div>
+    <button class="add-layer-btn" id="add-btn">+ Add layer</button>
+
+
+    <div class="sec" style="margin-top:6px">Custom noise injection</div>
+    <div class="inject-box">
+      <div class="hint"><strong>Parameters:</strong> <code>x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold</code></div>
+      <div class="hint"><strong>Returns:</strong> number <code>0 to 1</code></div>
+      <div class="hint"><strong>Canvas:</strong> Left-click + drag to pan | Scroll to zoom</div>
+      <textarea id="custom-src">function ripple(x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold) {
+  let r = Math.sqrt((x - 240) ** 2 + (y - 180) ** 2);
+  return (Math.sin(r / sc) + 1) / 2;
+}</textarea>
+      <div class="inject-row">
+        <button id="inject-btn">Inject &amp; add</button>
+        <button id="example-btn">Random example</button>
+      </div>
+      <div id="inject-msg" class="msg"></div>
+    </div>
+    <div class="sec" style="margin-top:6px">Import / Export</div>
+    <div class="inject-box">
+      <div class="hint">Import a saved JSON configuration or export your current setup</div>
+      <div class="inject-row">
+        <button id="import-json-btn">Import JSON</button>
+        <input type="file" id="import-json-file" accept=".json" style="display:none">
+      </div>
+      <div class="inject-row">
+        <button id="export-btn">Export as JS</button>
+        <button id="export-json-btn">Export as JSON</button>
+      </div>
+      <div id="export-msg" class="msg"></div>
+    </div>
+  </div>
+
+  
+</div>
+
+<script src="noise-lib.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
