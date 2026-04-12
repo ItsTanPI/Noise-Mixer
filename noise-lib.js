@@ -144,7 +144,7 @@ const NoiseLib = (function() {
   /**
    * Standard Perlin Noise
    */
-  function perlin(x, y, z, scale, octaves, falloff, seed) {
+  function perlin(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     const P = seededPerm(seed);
     const nx = x / scale;
     const ny = y / scale;
@@ -154,7 +154,7 @@ const NoiseLib = (function() {
   /**
    * Ridged Perlin - Creates ridge-like patterns
    */
-  function ridged(x, y, z, scale, octaves, falloff, seed) {
+  function ridged(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     const P = seededPerm(seed);
     const nx = x / scale;
     const ny = y / scale;
@@ -173,7 +173,7 @@ const NoiseLib = (function() {
   /**
    * Billowy Perlin - Creates cloud-like patterns
    */
-  function billowy(x, y, z, scale, octaves, falloff, seed) {
+  function billowy(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     const P = seededPerm(seed);
     const nx = x / scale;
     const ny = y / scale;
@@ -240,7 +240,7 @@ function _calculateCellular(x, y, scale, seed) {
 /**
  * Voronoi - Standard cell centers
  */
-function voronoi(x, y, z, scale, octaves, falloff, seed) {
+function voronoi(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
   const res = _calculateCellular(x, y, scale, seed);
   return Math.min(1, res.d1);
 }
@@ -248,8 +248,9 @@ function voronoi(x, y, z, scale, octaves, falloff, seed) {
 /**
  * Worley / Cellular - Multi-octave distance noise
  */
-function worley(x, y, z, scale, octaves, falloff, seed) {
+function worley(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
   let n = 0;
+  
   let amp = 1;
   let maxAmp = 0;
   let currentScale = scale;
@@ -267,7 +268,7 @@ function worley(x, y, z, scale, octaves, falloff, seed) {
  * Voronoi Cracks (F2 - F1)
  * This creates the "stained glass" or "cracked earth" edge lines
  */
-function voronoiCracks(x, y, z, scale, octaves, falloff, seed) {
+function voronoiCracks(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
   const res = _calculateCellular(x, y, scale, seed);
   // The closer F2 and F1 are, the closer we are to a boundary
   const diff = res.d2 - res.d1;
@@ -277,14 +278,14 @@ function voronoiCracks(x, y, z, scale, octaves, falloff, seed) {
 /**
  * Voronoi Edge - Inverted distance
  */
-function voronoiEdge(x, y, z, scale, octaves, falloff, seed) {
+function voronoiEdge(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
   return 1 - voronoi(x, y, z, scale, octaves, falloff, seed);
 }
 
 /**
  * Worley Edge - Inverted Worley
  */
-function worleyEdge(x, y, z, scale, octaves, falloff, seed) {
+function worleyEdge(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
   return 1 - worley(x, y, z, scale, octaves, falloff, seed);
 }
 
@@ -295,21 +296,21 @@ function worleyEdge(x, y, z, scale, octaves, falloff, seed) {
   /**
    * Sine Wave - X-axis (seed-based)
    */
-  function sineX(x, y, z, scale, octaves, falloff, seed) {
+  function sineX(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     return (Math.sin(x / scale * 6.28 + z * 5 + seed * 0.01) + 1) / 2;
   }
 
   /**
    * Sine Wave - Y-axis (seed-based)
    */
-  function sineY(x, y, z, scale, octaves, falloff, seed) {
+  function sineY(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     return (Math.sin(y / scale * 6.28 + z * 5 + seed * 0.01) + 1) / 2;
   }
 
   /**
    * Sine Wave - Radial (seed-based)
    */
-  function sineRadial(x, y, z, scale, octaves, falloff, seed) {
+  function sineRadial(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     const r = Math.sqrt(x * x + y * y) / scale;
     return (Math.sin(r * 6.28 + z * 5 + seed * 0.01) + 1) / 2;
   }
@@ -317,7 +318,7 @@ function worleyEdge(x, y, z, scale, octaves, falloff, seed) {
   /**
    * Checkerboard pattern (seed-based)
    */
-  function checkerboard(x, y, z, scale, octaves, falloff, seed) {
+  function checkerboard(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     // Use seed to create offset in checkerboard pattern
     const offset = ((seed % 2) === 0) ? 0 : 1;
     return ((Math.floor(x / scale) + Math.floor(y / scale) + offset) % 2 === 0) ? 1 : 0;
@@ -326,7 +327,7 @@ function worleyEdge(x, y, z, scale, octaves, falloff, seed) {
   /**
    * Domain Warped Perlin (seed-based)
    */
-  function domainWarp(x, y, z, scale, octaves, falloff, seed) {
+  function domainWarp(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     const P = seededPerm(seed);
     const nx = x / scale;
     const ny = y / scale;

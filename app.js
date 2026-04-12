@@ -96,7 +96,7 @@ function sampleNoise(l, x, y, z) {
     }
   }
   
-  return noiseFn(x, y, z, l.scale, l.octaves, l.falloff, l.seed);
+  return noiseFn(x, y, z, l.scale, l.octaves, l.falloff, l.seed, l.weight, l.contrast, l.threshold);
 }
 
 // Mask Application
@@ -559,11 +559,19 @@ function exportAsJS() {
   
   const sanitizedName = projectName.replace(/[^a-zA-Z0-9_]/g, '_');
   
+  // Build custom function definitions
+  let customFunctionsCode = '';
+  let customFunctionsRegistry = '';
+  for (const name in customFns) {
+    customFunctionsCode += '\n  /**\n   * Custom injected function: ' + name + '\n   */\n  ' + customFns[name].toString() + '\n';
+    customFunctionsRegistry += "    '" + name + "': " + name + ',\n';
+  }
+  
   // Get noise-lib source code
   const noiseLiBSource = `/**
  * Noise Library - Comprehensive noise generation functions
  * Organized by region with self-contained sub-functions
- * All functions follow signature: (x, y, z, scale, octaves, falloff, seed) => [0, 1]
+ * All functions follow signature: (x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) => [0, 1]
  */
 
 const NoiseLib = (function() {
@@ -706,7 +714,7 @@ const NoiseLib = (function() {
   /**
    * Standard Perlin Noise
    */
-  function perlin(x, y, z, scale, octaves, falloff, seed) {
+  function perlin(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     const P = seededPerm(seed);
     const nx = x / scale;
     const ny = y / scale;
@@ -716,7 +724,7 @@ const NoiseLib = (function() {
   /**
    * Ridged Perlin - Creates ridge-like patterns
    */
-  function ridged(x, y, z, scale, octaves, falloff, seed) {
+  function ridged(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     const P = seededPerm(seed);
     const nx = x / scale;
     const ny = y / scale;
@@ -735,7 +743,7 @@ const NoiseLib = (function() {
   /**
    * Billowy Perlin - Creates cloud-like patterns
    */
-  function billowy(x, y, z, scale, octaves, falloff, seed) {
+  function billowy(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     const P = seededPerm(seed);
     const nx = x / scale;
     const ny = y / scale;
@@ -799,7 +807,7 @@ const NoiseLib = (function() {
   /**
    * Voronoi - Standard cell centers
    */
-  function voronoi(x, y, z, scale, octaves, falloff, seed) {
+  function voronoi(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     const res = _calculateCellular(x, y, scale, seed);
     return Math.min(1, res.d1);
   }
@@ -807,7 +815,7 @@ const NoiseLib = (function() {
   /**
    * Worley / Cellular - Multi-octave distance noise
    */
-  function worley(x, y, z, scale, octaves, falloff, seed) {
+  function worley(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     let n = 0;
     let amp = 1;
     let maxAmp = 0;
@@ -826,7 +834,7 @@ const NoiseLib = (function() {
    * Voronoi Cracks (F2 - F1)
    * This creates the "stained glass" or "cracked earth" edge lines
    */
-  function voronoiCracks(x, y, z, scale, octaves, falloff, seed) {
+  function voronoiCracks(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     const res = _calculateCellular(x, y, scale, seed);
     const diff = res.d2 - res.d1;
     return Math.min(1, diff * 2.0);
@@ -835,14 +843,14 @@ const NoiseLib = (function() {
   /**
    * Voronoi Edge - Inverted distance
    */
-  function voronoiEdge(x, y, z, scale, octaves, falloff, seed) {
+  function voronoiEdge(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     return 1 - voronoi(x, y, z, scale, octaves, falloff, seed);
   }
 
   /**
    * Worley Edge - Inverted Worley
    */
-  function worleyEdge(x, y, z, scale, octaves, falloff, seed) {
+  function worleyEdge(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     return 1 - worley(x, y, z, scale, octaves, falloff, seed);
   }
 
@@ -853,21 +861,21 @@ const NoiseLib = (function() {
   /**
    * Sine Wave - X-axis (seed-based)
    */
-  function sineX(x, y, z, scale, octaves, falloff, seed) {
+  function sineX(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     return (Math.sin(x / scale * 6.28 + z * 5 + seed * 0.01) + 1) / 2;
   }
 
   /**
    * Sine Wave - Y-axis (seed-based)
    */
-  function sineY(x, y, z, scale, octaves, falloff, seed) {
+  function sineY(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     return (Math.sin(y / scale * 6.28 + z * 5 + seed * 0.01) + 1) / 2;
   }
 
   /**
    * Sine Wave - Radial (seed-based)
    */
-  function sineRadial(x, y, z, scale, octaves, falloff, seed) {
+  function sineRadial(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     const r = Math.sqrt(x * x + y * y) / scale;
     return (Math.sin(r * 6.28 + z * 5 + seed * 0.01) + 1) / 2;
   }
@@ -875,7 +883,7 @@ const NoiseLib = (function() {
   /**
    * Checkerboard pattern (seed-based)
    */
-  function checkerboard(x, y, z, scale, octaves, falloff, seed) {
+  function checkerboard(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     const offset = ((seed % 2) === 0) ? 0 : 1;
     return ((Math.floor(x / scale) + Math.floor(y / scale) + offset) % 2 === 0) ? 1 : 0;
   }
@@ -883,7 +891,7 @@ const NoiseLib = (function() {
   /**
    * Domain Warped Perlin (seed-based)
    */
-  function domainWarp(x, y, z, scale, octaves, falloff, seed) {
+  function domainWarp(x, y, z, scale, octaves, falloff, seed, weight, contrast, threshold) {
     const P = seededPerm(seed);
     const nx = x / scale;
     const ny = y / scale;
@@ -893,7 +901,7 @@ const NoiseLib = (function() {
     const wy = pnoise(P3, nx + 5.2, ny + 1.3, z) * scale * 0.8;
     return fbm(P, (x + wx) / scale, (y + wy) / scale, z + 0.5, octaves, falloff);
   }
-
+${customFunctionsCode}
   // ============================================================================
   // REGION: Utility Functions
   // ============================================================================
@@ -929,9 +937,9 @@ const NoiseLib = (function() {
     'sine_y': sineY,
     'sine_radial': sineRadial,
     'checkerboard': checkerboard,
-    'domain_warp': domainWarp
+    'domain_warp': domainWarp${customFunctionsRegistry ? ',\n' + customFunctionsRegistry.trim() : ''}
   };
-
+  
   // ============================================================================
   // PUBLIC API
   // ============================================================================
@@ -971,32 +979,10 @@ ${noiseLiBSource}
 const ${sanitizedName} = (function() {
   const globalState = ${JSON.stringify(gState)};
   const layers = ${JSON.stringify(layers)};
-  const customFunctionsSrc = ${JSON.stringify(Object.keys(customFns).reduce((obj, name) => {
-    obj[name] = customFns[name].toString();
-    return obj;
-  }, {}))};
-  
-  // Initialize custom functions
-  const customFunctions = {};
-  for (const name in customFunctionsSrc) {
-    // Execute the function string to get the actual function
-    try {
-      customFunctions[name] = eval('(' + customFunctionsSrc[name] + ')');
-    } catch(e) {
-      console.error('Error loading custom function ' + name + ':', e);
-    }
-  }
   
   function sampleNoise(layer, x, y, z) {
     const noiseFn = NoiseLib.getNoiseFunction(layer.type);
-    if (customFunctions[layer.type]) {
-      try {
-        return customFunctions[layer.type](x, y, z, layer.scale, layer.octaves, layer.falloff, layer.seed);
-      } catch(e) {
-        return 0;
-      }
-    }
-    return noiseFn(x, y, z, layer.scale, layer.octaves, layer.falloff, layer.seed);
+    return noiseFn(x, y, z, layer.scale, layer.octaves, layer.falloff, layer.seed, layer.weight, layer.contrast, layer.threshold);
   }
   
   function applyMask(mask, x, y, w, h) {
@@ -1294,10 +1280,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const on = lightModeBtn.classList.toggle('on');
       if (on) {
         document.documentElement.classList.add('light-mode');
+        lightModeBtn.textContent = 'Dark';
         localStorage.setItem('lightMode', 'true');
       } else {
         document.documentElement.classList.remove('light-mode');
-        localStorage.setItem('lightMode', 'false');
+        lightModeBtn.textContent = 'Light';
+        localStorage.removeItem('lightMode');
       }
     });
     
@@ -1305,6 +1293,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('lightMode') === 'true') {
       document.documentElement.classList.add('light-mode');
       lightModeBtn.classList.add('on');
+      lightModeBtn.textContent = 'Dark';
     }
   }
 });
