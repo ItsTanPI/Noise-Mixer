@@ -53,6 +53,7 @@
       <div class="tog" id="t-contour">Contour</div>
       <div class="tog" id="t-warp">Domain warp</div>
       <div class="tog" id="t-lightmode">Light</div>
+      <div class="tog" id="t-about">About</div>
     </div>
   </div>
 
@@ -90,9 +91,37 @@
       </div>
       <div id="export-msg" class="msg"></div>
     </div>
+
+
   </div>
 
-  
+  <div id="about-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>About Noise Mixer</h2>
+        <button class="modal-close" id="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p><strong>Noise Mixer</strong> is a powerful noise generation and visualization tool.</p>
+        
+        <div class="about-section">
+          <h3>Developer</h3>
+          <p>Developed by <strong><a href="https://github.com/itstanpi" target="_blank">Tanpi</a></strong></p>
+        </div>
+        
+        <div class="about-section">
+          <h3>Project Purpose</h3>
+          <p>This tool was developed as a utility for an upcoming game project that will be developed with <strong><a href="https://github.com/ItsTanPI/PiGL.js" target="_blank">PiGL.js</a></strong>.</p>
+        </div>
+        
+        <div class="about-section">
+          <h3>Acknowledgments</h3>
+          <p>This project was developed with assistance from AI Coding.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script src="noise-lib.js"></script>

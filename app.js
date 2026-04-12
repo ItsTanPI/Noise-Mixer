@@ -971,7 +971,21 @@ ${noiseLiBSource}
 const ${sanitizedName} = (function() {
   const globalState = ${JSON.stringify(gState)};
   const layers = ${JSON.stringify(layers)};
+  const customFunctionsSrc = ${JSON.stringify(Object.keys(customFns).reduce((obj, name) => {
+    obj[name] = customFns[name].toString();
+    return obj;
+  }, {}))};
+  
+  // Initialize custom functions
   const customFunctions = {};
+  for (const name in customFunctionsSrc) {
+    // Execute the function string to get the actual function
+    try {
+      customFunctions[name] = eval('(' + customFunctionsSrc[name] + ')');
+    } catch(e) {
+      console.error('Error loading custom function ' + name + ':', e);
+    }
+  }
   
   function sampleNoise(layer, x, y, z) {
     const noiseFn = NoiseLib.getNoiseFunction(layer.type);
@@ -1337,6 +1351,31 @@ canvas.addEventListener('wheel', (e) => {
   document.getElementById('zoom-val').textContent = gState.zoom.toFixed(1) + 'x';
   render();
 });
+
+// About Modal
+const aboutBtn = document.getElementById('t-about');
+const aboutModal = document.getElementById('about-modal');
+const modalClose = document.getElementById('modal-close');
+
+if (aboutBtn) {
+  aboutBtn.addEventListener('click', () => {
+    aboutModal.classList.remove('hidden');
+  });
+}
+
+if (modalClose) {
+  modalClose.addEventListener('click', () => {
+    aboutModal.classList.add('hidden');
+  });
+}
+
+if (aboutModal) {
+  aboutModal.addEventListener('click', (e) => {
+    if (e.target === aboutModal) {
+      aboutModal.classList.add('hidden');
+    }
+  });
+}
 
 // Initialize
 addLayer();
