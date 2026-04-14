@@ -27,9 +27,9 @@
   <div class="menu-item">
     <div class="menu-title">Edit</div>
     <div class="menu-dropdown">
+      <div class="menu-option" id="edit-color-btn">Edit Colors</div>
       <div class="menu-option" id="menu-import-colors">Import Color Schema</div>
-      <div class="menu-option" id="menu-export-colors">Export Color Schema</div>
-      <div class="menu-option" id="menu-theme">Mode : Dark</div>
+      <div class="menu-option" id="menu-export-colors">Export Color Schema</div>      
     </div>
   </div>
   
@@ -39,7 +39,16 @@
       <div class="menu-option" id="menu-about">About Application</div>
     </div>
   </div>
+  <div id="menubar-right" style="margin-left:auto;display:flex;align-items:center;gap:8px">
+      <label class="theme-switch" title="Toggle dark / light mode">
+        <input type="checkbox" id="menu-theme" />
+        <span class="switch-track">
+          <span class="switch-thumb"></span>
+        </span>
+      </label>
+  </div>
 </div>
+
 
 <div id="app">
   <div id="left">
@@ -50,7 +59,14 @@
   </div>
 
   <div id="right">
-        <div id="global-controls">
+    <div class="sec">Global Controls &nbsp;<span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0">modifies the final noise </span></div>
+    <div id="global-controls-card" class="layer-card">
+      
+      <div class="card-header">
+        <div class="card-toggle">▼</div>
+        <div style="font-size:14px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;flex:1">Controls</div>
+      </div>
+      <div class="card-body" id="global-controls">
       <div class="gctl"><label>Color</label>
         <select id="g-color">
           <option value="gray">Grayscale</option>
@@ -59,9 +75,7 @@
           <option value="ice">Ice</option>
         </select>
       </div>
-      <div class="gctl" style="flex-direction:row;align-items:flex-end">
-        <button id="edit-color-btn" style="padding:5px 8px;font-size:12px">Edit Colors</button>
-      </div>
+
       <div class="gctl"><label>Resolution</label>
         <select id="g-res">
           <option value="4">4px (fastest)</option>
@@ -69,8 +83,6 @@
           <option value="1">1px (full)</option>
         </select>
       </div>
-      
-      <br>  
       <div class="gctl"><label>Pan X</label>
         <input type="number" id="g-panx" value="0" style="width:100%;padding:5px;font-size:13px">
       </div>
@@ -86,18 +98,13 @@
         <span id="z-val" style="font-size:14px;color:var(--text2)">0.0</span>
       </div>
     </div>
+    </div>
     <div class="sec">Layers &nbsp;<span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0">drag to reorder</span></div>
     <div id="layers-list"></div>
-    <button class="add-layer-btn" id="add-btn">+ Add layer</button>
-
-
-    <div class="sec" style="margin-top:6px">Tools</div>
-    <div class="inject-box">
-      <div class="inject-row">
-        <button id="custom-noise-btn">Custom Noise</button>
-      </div>
+    <div class="layer-actions" style="display:flex;gap:8px;align-items:center;margin-top:8px">
+      <button class="add-layer-btn" id="add-btn">+ Add layer</button>
+      <button class="add-layer-btn" id="custom-noise-btn">Custom Noise</button>
     </div>
-
   </div>
 
   <!-- Color Scheme Editor Modal -->

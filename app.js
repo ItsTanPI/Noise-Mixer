@@ -328,7 +328,8 @@ function mkLayer() {
     offsetX: 0,
     offsetY: 0,
     blend: 'avg',
-    visible: true
+    visible: true,
+    collapsed: false
   };
 }
 
@@ -340,7 +341,7 @@ function buildCard(l, idx) {
 
   const hdr = document.createElement('div');
   hdr.className = 'card-header';
-  hdr.innerHTML = `<span class="drag-handle">⠿</span><span class="card-num">${idx + 1}</span><span class="card-title">Layer ${idx + 1}</span><span class="card-badge" id="badge_${l.id}">${l.type}</span><span class="card-eye${l.visible ? '' : ' hidden-layer'}" id="eye_${l.id}">${l.visible ? '●' : '○'}</span><span class="card-rm">✕</span>`;
+  hdr.innerHTML = `<span class="card-toggle">${l.collapsed ? '▸' : '▾'}</span><span class="drag-handle">⠿</span><span class="card-num">${idx + 1}</span><span class="card-title">Layer ${idx + 1}</span><span class="card-badge" id="badge_${l.id}">${l.type}</span><span class="card-eye${l.visible ? '' : ' hidden-layer'}" id="eye_${l.id}">${l.visible ? '●' : '○'}</span><span class="card-rm">✕</span>`;
   
   hdr.querySelector('.card-eye').addEventListener('click', e => {
     e.stopPropagation();
@@ -357,6 +358,20 @@ function buildCard(l, idx) {
     layers = layers.filter(x => x.id !== l.id);
     renderLayers();
   });
+
+  // Collapse / expand toggle
+  const toggle = hdr.querySelector('.card-toggle');
+  if (toggle) {
+    toggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      l.collapsed = !l.collapsed;
+      card.classList.toggle('collapsed', l.collapsed);
+      // update toggle icon
+      toggle.textContent = l.collapsed ? '▸' : '▾';
+      const bodyEl = card.querySelector('.card-body');
+      if (bodyEl) bodyEl.style.display = l.collapsed ? 'none' : '';
+    });
+  }
 
   const body = document.createElement('div');
   body.className = 'card-body';
@@ -474,6 +489,11 @@ function buildCard(l, idx) {
 
   card.appendChild(hdr);
   card.appendChild(body);
+
+  if (l.collapsed) {
+    body.style.display = 'none';
+    card.classList.add('collapsed');
+  }
 
   hdr.addEventListener('dragstart', e => {
     dragSrcId = l.id;
@@ -1460,11 +1480,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const on = lightModeBtn.classList.toggle('on');
       if (on) {
         document.documentElement.classList.add('light-mode');
-        lightModeBtn.textContent = 'Mode : Dark';
+        lightModeBtn.textContent = 'Dark';
         localStorage.setItem('lightMode', 'true');
       } else {
         document.documentElement.classList.remove('light-mode');
-        lightModeBtn.textContent = 'Mode : Light';
+        lightModeBtn.textContent = 'Light';
         localStorage.removeItem('lightMode');
       }
     });
@@ -1635,20 +1655,28 @@ document.getElementById('menu-new').addEventListener('click', () => {
       currentProjectName = projectName;
       projectNameDisplay.textContent = currentProjectName;
       // Reset all layers and state
-      gState.layers = [];
-      renderLayers();
-      addLayer();
+      layers = [];
       gState.zoom = 1;
       gState.panx = 0;
       gState.pany = 0;
       gState.z = 0;
+      gState.color = 'gray';
+      gState.res = 2;
+      // Reset UI controls
       document.getElementById('g-zoom').value = 1;
       document.getElementById('zoom-val').textContent = '1x';
       document.getElementById('g-z').value = 0;
       document.getElementById('z-val').textContent = '0.0';
       document.getElementById('g-panx').value = 0;
       document.getElementById('g-pany').value = 0;
-      render();
+      document.getElementById('g-color').value = 'gray';
+      document.getElementById('g-res').value = 2;
+      // Clear canvas
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, W, H);
+      // Render and add first layer
+      renderLayers();
+      addLayer();
     }
   }
 });
@@ -1712,12 +1740,7 @@ document.getElementById('menu-export-colors').addEventListener('click', () => {
 });
 
 // Edit Menu - Theme/Application
-document.getElementById('menu-theme').addEventListener('click', () => {
-  const lightToggle = document.getElementById('t-lightmode');
-  if (lightToggle) {
-    lightToggle.click();
-  }
-});
+// (Theme toggle implemented as checkbox switch; handler wired in initialization below)
 
 // About Menu - About Application
 document.getElementById('menu-about').addEventListener('click', () => {
@@ -1727,3 +1750,42 @@ document.getElementById('menu-about').addEventListener('click', () => {
 
 // Initialize
 addLayer();
+
+// Theme toggle initialization: persist preference in localStorage and apply
+(function initThemeToggle(){
+  const themeCheckbox = document.getElementById('menu-theme');
+  if (!themeCheckbox) return;
+
+  // Apply saved preference: 'light' => light mode on
+  const pref = localStorage.getItem('nm_theme');
+  const isLight = pref === 'light';
+  if (isLight) document.documentElement.classList.add('light-mode');
+  else document.documentElement.classList.remove('light-mode');
+  themeCheckbox.checked = isLight;
+
+  themeCheckbox.addEventListener('change', () => {
+    const on = themeCheckbox.checked;
+    if (on) {
+      document.documentElement.classList.add('light-mode');
+      localStorage.setItem('nm_theme', 'light');
+    } else {
+      document.documentElement.classList.remove('light-mode');
+      localStorage.setItem('nm_theme', 'dark');
+    }
+  });
+
+  // Global controls collapse toggle
+  const globalControlsCard = document.getElementById('global-controls-card');
+  if (globalControlsCard) {
+    const toggle = globalControlsCard.querySelector('.card-toggle');
+    if (toggle) {
+      toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        globalControlsCard.classList.toggle('collapsed');
+        toggle.textContent = globalControlsCard.classList.contains('collapsed') ? '▸' : '▼';
+        const bodyEl = globalControlsCard.querySelector('.card-body');
+        if (bodyEl) bodyEl.style.display = globalControlsCard.classList.contains('collapsed') ? 'none' : '';
+      });
+    }
+  }
+})();

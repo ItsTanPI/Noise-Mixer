@@ -1,18 +1,20 @@
 {
   "version": "1.0",
-  "timestamp": "2026-04-14T11:48:56.859Z",
-  "projectName": "Map",
+  "projectName": "CustomMapNoise",
   "description": "Noise mixer configuration exported from Noise Mixer",
   "globalState": {
     "res": 4,
     "color": "terrain",
     "offsetX": 0,
     "offsetY": 0,
-    "zoom": 1
+    "zoom": 1.0,
+    "invert": false,
+    "contour": false,
+    "warp": false
   },
   "layers": [
     {
-      "id": 3,
+      "id": 1,
       "type": "perlin",
       "mask": "none",
       "scale": 32,
@@ -29,7 +31,7 @@
       "visible": true
     },
     {
-      "id": 4,
+      "id": 2,
       "type": "billowy",
       "mask": "none",
       "scale": 100,
@@ -46,7 +48,7 @@
       "visible": true
     },
     {
-      "id": 5,
+      "id": 3,
       "type": "ridged",
       "mask": "none",
       "scale": 198,
