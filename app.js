@@ -594,6 +594,11 @@ function exportAsJS() {
 ${noiseLiBSource}
 
 // ============================================================================
+// CUSTOM INJECTED FUNCTIONS
+// ============================================================================
+${customFunctionsCode}
+
+// ============================================================================
 // CONFIGURATION & RENDERING ENGINE
 // ============================================================================
 
@@ -601,7 +606,24 @@ const ${sanitizedName} = (function() {
   const globalState = ${JSON.stringify(gState)};
   const layers = ${JSON.stringify(layers)};
   
+  // Add custom functions to NoiseLib
+  const customFunctions = {
+${customFunctionsRegistry}
+  };
+  
   function sampleNoise(layer, x, y, z) {
+    // Check custom functions first
+    if (customFunctions[layer.type] && typeof customFunctions[layer.type] === 'function') {
+      try {
+        const v = customFunctions[layer.type](x, y, z, layer.scale, layer.octaves, layer.falloff, layer.seed, layer.weight, layer.contrast, layer.threshold);
+        return isNaN(v) ? 0 : Math.max(0, Math.min(1, v));
+      } catch (e) {
+        console.error('Error in custom function ' + layer.type + ':', e);
+        return 0;
+      }
+    }
+    
+    // Fall back to NoiseLib functions
     const noiseFn = NoiseLib.getNoiseFunction(layer.type);
     return noiseFn(x, y, z, layer.scale, layer.octaves, layer.falloff, layer.seed, layer.weight, layer.contrast, layer.threshold);
   }
@@ -650,6 +672,7 @@ const ${sanitizedName} = (function() {
     getState: () => ({...globalState}),
     getLayers: () => [...layers],
     NoiseLib,
+    customFunctions,
     projectName: '${projectName}'
   };
 })();
