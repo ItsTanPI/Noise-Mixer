@@ -7,6 +7,40 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<!-- Menu Bar -->
+<div id="menubar">
+  <div id="project-name-container">
+    <span id="project-name-display">Untitled Project</span>
+    <input type="text" id="project-name-input" placeholder="Enter project name..." style="display:none">
+  </div>
+  
+  <div class="menu-item">
+    <div class="menu-title">File</div>
+    <div class="menu-dropdown">
+      <div class="menu-option" id="menu-new">New</div>
+      <div class="menu-option" id="menu-save">Save</div>
+      <div class="menu-option" id="menu-load">Load</div>
+      <div class="menu-option" id="menu-build">Build</div>
+    </div>
+  </div>
+  
+  <div class="menu-item">
+    <div class="menu-title">Edit</div>
+    <div class="menu-dropdown">
+      <div class="menu-option" id="menu-import-colors">Import Color Schema</div>
+      <div class="menu-option" id="menu-export-colors">Export Color Schema</div>
+      <div class="menu-option" id="menu-theme">Theme / Application</div>
+    </div>
+  </div>
+  
+  <div class="menu-item">
+    <div class="menu-title">About</div>
+    <div class="menu-dropdown">
+      <div class="menu-option" id="menu-about">About Application</div>
+    </div>
+  </div>
+</div>
+
 <div id="app">
   <div id="left">
     <div id="canvas-wrap">
@@ -19,10 +53,11 @@
           <option value="gray">Grayscale</option>
           <option value="terrain">Terrain</option>
           <option value="heat">Heat</option>
-          <option value="plasma">Plasma</option>
           <option value="ice">Ice</option>
-          <option value="neon">Neon</option>
         </select>
+      </div>
+      <div class="gctl" style="flex-direction:row;align-items:flex-end">
+        <button id="edit-color-btn" style="padding:5px 8px;font-size:12px">Edit Colors</button>
       </div>
       <div class="gctl"><label>Resolution</label>
         <select id="g-res">
@@ -61,36 +96,74 @@
     <button class="add-layer-btn" id="add-btn">+ Add layer</button>
 
 
-    <div class="sec" style="margin-top:6px">Custom noise injection</div>
+    <div class="sec" style="margin-top:6px">Tools</div>
     <div class="inject-box">
-      <div class="hint"><strong>Parameters:</strong> <code>x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold</code></div>
-      <div class="hint"><strong>Returns:</strong> number <code>0 to 1</code></div>
-      <div class="hint"><strong>Canvas:</strong> Left-click + drag to pan | Scroll to zoom</div>
-      <textarea id="custom-src">function ripple(x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold) {
-  let r = Math.sqrt((x - 240) ** 2 + (y - 180) ** 2);
-  return (Math.sin(r / sc) + 1) / 2;
-}</textarea>
       <div class="inject-row">
-        <button id="inject-btn">Inject &amp; add</button>
-        <button id="example-btn">Random example</button>
-      </div>
-      <div id="inject-msg" class="msg"></div>
-    </div>
-    <div class="sec" style="margin-top:6px">Import / Export</div>
-    <div class="inject-box">
-      <div class="hint">Import a saved JSON configuration or export your current setup</div>
-      <div class="inject-row">
-        <button id="import-json-btn">Import JSON</button>
-        <input type="file" id="import-json-file" accept=".json" style="display:none">
+        <button id="custom-noise-btn">Custom Noise</button>
       </div>
       <div class="inject-row">
-        <button id="export-btn">Export as JS</button>
-        <button id="export-json-btn">Export as JSON</button>
+        <button id="color-schemes-btn">Color Schemes</button>
       </div>
-      <div id="export-msg" class="msg"></div>
     </div>
 
+  </div>
 
+  <!-- Color Scheme Editor Modal -->
+  <div id="color-editor-modal" class="modal hidden">
+    <div class="modal-content" style="max-width:700px">
+      <div class="modal-header">
+        <h2>Edit Color Scheme</h2>
+        <button class="modal-close" id="color-editor-close">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <!-- Scheme Selection -->
+          <div style="display:flex;gap:8px;align-items:center">
+            <label style="min-width:80px">Select Scheme:</label>
+            <select id="color-scheme-select" style="flex:1;padding:6px;border:1px solid var(--border2);border-radius:4px;font-family:var(--font)">
+            </select>
+            <button id="color-scheme-new-btn" style="padding:6px 12px;font-size:12px;background:var(--success);color:white;border:none;border-radius:4px;cursor:pointer">New</button>
+          </div>
+
+          <!-- Scheme Settings -->
+          <div style="display:flex;gap:8px;align-items:center">
+            <label style="min-width:80px">Scheme Name:</label>
+            <input type="text" id="color-scheme-name" placeholder="My Color Scheme" style="flex:1;padding:6px;border:1px solid var(--border2);border-radius:4px;font-family:var(--font)">
+          </div>
+          
+          <div style="display:flex;gap:8px;align-items:center">
+            <label style="min-width:80px">Type:</label>
+            <select id="color-scheme-type" style="flex:1;padding:6px;border:1px solid var(--border2);border-radius:4px;font-family:var(--font)">
+              <option value="gradient">Gradient (smooth interpolation)</option>
+              <option value="stops">Stops (discrete steps)</option>
+            </select>
+          </div>
+
+          <!-- Preview -->
+          <div>
+            <label style="font-weight:bold;color:var(--text);display:block;margin-bottom:6px">Preview:</label>
+            <div id="color-scheme-preview" style="width:100%;height:40px;border-radius:4px;border:1px solid var(--border2);overflow:hidden"></div>
+          </div>
+
+          <!-- Color Stops List -->
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <label style="font-weight:bold;color:var(--text)">Color Stops:</label>
+              <button id="add-color-stop-btn" style="padding:4px 8px;font-size:12px;background:var(--accent);color:white;border:none;border-radius:4px;cursor:pointer">+ Add Color</button>
+            </div>
+            <div id="color-stops-list" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;border:1px solid var(--border2);border-radius:4px;padding:6px;background:var(--bg2)">
+              <!-- Color stops will be added here -->
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+            <button id="color-editor-cancel" style="padding:6px 12px;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer">Cancel</button>
+            <button id="color-editor-save" style="padding:6px 12px;border:none;background:var(--accent);color:white;border-radius:4px;cursor:pointer">Save Scheme</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div id="about-modal" class="modal hidden">
@@ -115,6 +188,130 @@
         <div class="about-section">
           <h3>Acknowledgments</h3>
           <p>This project was developed with assistance from AI Coding.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Noise Injection Modal -->
+  <div id="custom-noise-modal" class="modal hidden">
+    <div class="modal-content" style="max-width:700px">
+      <div class="modal-header">
+        <h2>Custom Noise Injection</h2>
+        <button class="modal-close" id="custom-noise-close">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="hint"><strong>Parameters:</strong> <code>x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold</code></div>
+          <div class="hint"><strong>Returns:</strong> number <code>0 to 1</code></div>
+          <div class="hint"><strong>Canvas:</strong> Left-click + drag to pan | Scroll to zoom</div>
+          <label style="font-weight:bold;color:var(--text);display:block;margin-bottom:6px">Function Code:</label>
+          <textarea id="custom-src" style="width:100%;height:200px;padding:8px;border:1px solid var(--border2);border-radius:4px;font-family:monospace;font-size:12px;background:var(--bg2);color:var(--text)">function ripple(x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold) {
+  let r = Math.sqrt((x - 240) ** 2 + (y - 180) ** 2);
+  return (Math.sin(r / sc) + 1) / 2;
+}</textarea>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button id="example-btn" style="padding:6px 12px;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer">Random example</button>
+            <button id="inject-btn" style="padding:6px 12px;border:none;background:var(--accent);color:white;border-radius:4px;cursor:pointer">Inject &amp; add</button>
+          </div>
+          <div id="inject-msg" class="msg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Color Schemes Modal -->
+  <div id="color-schemes-modal" class="modal hidden">
+    <div class="modal-content" style="max-width:700px">
+      <div class="modal-header">
+        <h2>Color Schemes</h2>
+        <button class="modal-close" id="color-schemes-close">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <label style="font-weight:bold;color:var(--text);display:block;margin-bottom:6px">Manage and customize color schemes as JSON</label>
+          <div style="display:flex;gap:8px">
+            <button id="import-color-btn" style="flex:1;padding:6px 12px;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer">Import Schemes</button>
+            <button id="export-color-btn" style="flex:1;padding:6px 12px;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer">Export Schemes</button>
+            <button id="edit-color-schemes-btn" style="flex:1;padding:6px 12px;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer">Edit Scheme</button>
+          </div>
+          <div id="export-color-msg" class="msg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Color Scheme Import/Export Modal -->
+  <div id="color-io-modal" class="modal hidden">
+    <div class="modal-content" style="max-width:700px">
+      <div class="modal-header">
+        <h2 id="color-io-title">Import Color Schemes</h2>
+        <button class="modal-close" id="color-io-close">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <!-- Import Section -->
+          <div id="color-import-section">
+            <label style="font-weight:bold;color:var(--text);display:block;margin-bottom:6px">Upload JSON File:</label>
+            <input type="file" id="color-io-file-input" accept=".json" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:4px;margin-bottom:12px">
+            <label style="font-weight:bold;color:var(--text);display:block;margin-bottom:6px">Or paste JSON:</label>
+            <textarea id="color-io-textarea" placeholder="Paste color schemes JSON here..." style="width:100%;height:200px;padding:8px;border:1px solid var(--border2);border-radius:4px;font-family:monospace;font-size:12px;background:var(--bg2);color:var(--text)"></textarea>
+          </div>
+          
+          <!-- Export Section (hidden by default) -->
+          <div id="color-export-section" style="display:none">
+            <label style="font-weight:bold;color:var(--text);display:block;margin-bottom:6px">Export Name:</label>
+            <input type="text" id="color-export-name" placeholder="ColorSchemes" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:4px;margin-bottom:12px;font-family:var(--font)">
+            <label style="font-weight:bold;color:var(--text);display:block;margin-bottom:6px">JSON Data:</label>
+            <textarea id="color-export-textarea" readonly style="width:100%;height:200px;padding:8px;border:1px solid var(--border2);border-radius:4px;font-family:monospace;font-size:12px;background:var(--bg2);color:var(--text)"></textarea>
+          </div>
+          
+          <div id="color-io-msg" class="msg" style="display:none"></div>
+          
+          <!-- Action Buttons -->
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button id="color-io-cancel" style="padding:6px 12px;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer">Cancel</button>
+            <button id="color-io-action" style="padding:6px 12px;border:none;background:var(--accent);color:white;border-radius:4px;cursor:pointer">Import</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Noise Configuration Import/Export Modal -->
+  <div id="noise-io-modal" class="modal hidden">
+    <div class="modal-content" style="max-width:700px">
+      <div class="modal-header">
+        <h2 id="noise-io-title">Import Configuration</h2>
+        <button class="modal-close" id="noise-io-close">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <!-- Import Section -->
+          <div id="noise-import-section">
+            <label style="font-weight:bold;color:var(--text);display:block;margin-bottom:6px">Upload JSON File:</label>
+            <input type="file" id="noise-io-file-input" accept=".json" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:4px;margin-bottom:12px">
+            <label style="font-weight:bold;color:var(--text);display:block;margin-bottom:6px">Or paste JSON:</label>
+            <textarea id="noise-io-textarea" placeholder="Paste noise configuration JSON here..." style="width:100%;height:200px;padding:8px;border:1px solid var(--border2);border-radius:4px;font-family:monospace;font-size:12px;background:var(--bg2);color:var(--text)"></textarea>
+          </div>
+          
+          <!-- Export Section (hidden by default) -->
+          <div id="noise-export-section" style="display:none">
+            <label style="font-weight:bold;color:var(--text);display:block;margin-bottom:6px">Export Name:</label>
+            <input type="text" id="noise-export-name" placeholder="NoiseConfig" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:4px;margin-bottom:12px;font-family:var(--font)">
+            <label style="font-weight:bold;color:var(--text);display:block;margin-bottom:6px">JSON Data:</label>
+            <textarea id="noise-export-textarea" readonly style="width:100%;height:200px;padding:8px;border:1px solid var(--border2);border-radius:4px;font-family:monospace;font-size:12px;background:var(--bg2);color:var(--text)"></textarea>
+          </div>
+          
+          <div id="noise-io-msg" class="msg" style="display:none"></div>
+          
+          <!-- Action Buttons -->
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button id="noise-io-cancel" style="padding:6px 12px;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer">Cancel</button>
+            <button id="noise-io-copy" style="padding:6px 12px;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer;display:none">Copy</button>
+            <button id="noise-io-download" style="padding:6px 12px;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer;display:none">Download</button>
+            <button id="noise-io-action" style="padding:6px 12px;border:none;background:var(--accent);color:white;border-radius:4px;cursor:pointer">Import</button>
+          </div>
         </div>
       </div>
     </div>

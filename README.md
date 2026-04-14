@@ -161,10 +161,63 @@ You can edit this JSON file manually to tweak parameters or share it with others
 4. **Load** - Import `terrain_v1.json` to go back to that exact setup
 5. **Export as JS** - When happy, click `"Export as JS"` to get a production-ready noise generator
 
+## Color Schemes
+
+### Custom Color Schemes
+
+You can fully customize color schemes as JSON. Three types are supported:
+
+**Gradient Type** - Smooth interpolation between color stops
+```json
+{
+  "name": "Ocean Gradient",
+  "type": "gradient",
+  "stops": [
+    { "value": 0, "r": 0, "g": 0, "b": 50 },
+    { "value": 0.5, "r": 30, "g": 150, "b": 200 },
+    { "value": 1, "r": 255, "g": 255, "b": 255 }
+  ]
+}
+```
+
+**Stops Type** - Step through discrete colors at thresholds
+```json
+{
+  "name": "Discrete Terrain",
+  "type": "stops",
+  "stops": [
+    { "value": 0.3, "r": 50, "g": 100, "b": 200 },
+    { "value": 0.5, "r": 200, "g": 180, "b": 100 },
+    { "value": 0.8, "r": 100, "g": 150, "b": 60 },
+    { "value": 1.0, "r": 255, "g": 255, "b": 255 }
+  ]
+}
+```
+
+**Sine Type** - Procedural sine-wave colors
+```json
+{
+  "name": "Neon Wave",
+  "type": "sine",
+  "phases": [0, 2.1, 4.2],
+  "amplitude": 200,
+  "offset": 55
+}
+```
+
+### Managing Color Schemes
+
+1. **Edit Schemes** - Click "Edit Scheme" to create or modify color schemes as JSON
+2. **Export Schemes** - Click "Export Schemes" to save all your color schemes as a `.json` file
+3. **Import Schemes** - Click "Import Schemes" to load color schemes from a file
+
+You can share color scheme files with others or use them across different projects.
+
 ## Features
 
 - Real-time multi-layer mixing
 - Custom function injection
 - Save/load configurations
+- **Custom color schemes** (editable as JSON)
 - Export as JSON or JavaScript code
 - Works offline, no dependencies
