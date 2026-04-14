@@ -1,21 +1,18 @@
 {
   "version": "1.0",
-  "timestamp": "2026-04-12T09:01:32.090Z",
+  "timestamp": "2026-04-14T11:48:56.859Z",
   "projectName": "Map",
   "description": "Noise mixer configuration exported from Noise Mixer",
   "globalState": {
     "res": 4,
     "color": "terrain",
-    "offsetX": 25,
-    "offsetY": -14,
-    "zoom": 1,
-    "invert": false,
-    "contour": false,
-    "warp": false
+    "offsetX": 0,
+    "offsetY": 0,
+    "zoom": 1
   },
   "layers": [
     {
-      "id": 2,
+      "id": 3,
       "type": "perlin",
       "mask": "none",
       "scale": 32,
@@ -32,7 +29,7 @@
       "visible": true
     },
     {
-      "id": 1,
+      "id": 4,
       "type": "billowy",
       "mask": "none",
       "scale": 100,
@@ -49,7 +46,7 @@
       "visible": true
     },
     {
-      "id": 0,
+      "id": 5,
       "type": "ridged",
       "mask": "none",
       "scale": 198,
@@ -66,5 +63,115 @@
       "visible": true
     }
   ],
+  "colorSchemes": {
+    "gray": {
+      "name": "Grayscale",
+      "type": "gradient",
+      "stops": [
+        {
+          "value": 0,
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "value": 1,
+          "r": 255,
+          "g": 255,
+          "b": 255
+        }
+      ]
+    },
+    "terrain": {
+      "name": "Terrain",
+      "type": "stops",
+      "stops": [
+        {
+          "value": 0.35,
+          "r": 30,
+          "g": 80,
+          "b": 200
+        },
+        {
+          "value": 0.42,
+          "r": 210,
+          "g": 190,
+          "b": 130
+        },
+        {
+          "value": 0.7,
+          "r": 100,
+          "g": 150,
+          "b": 60
+        },
+        {
+          "value": 0.85,
+          "r": 150,
+          "g": 120,
+          "b": 90
+        },
+        {
+          "value": 1,
+          "r": 240,
+          "g": 240,
+          "b": 245
+        }
+      ]
+    },
+    "heat": {
+      "name": "Heat",
+      "type": "gradient",
+      "stops": [
+        {
+          "value": 0,
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "value": 0.33,
+          "r": 255,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "value": 0.66,
+          "r": 255,
+          "g": 255,
+          "b": 0
+        },
+        {
+          "value": 1,
+          "r": 255,
+          "g": 255,
+          "b": 255
+        }
+      ]
+    },
+    "ice": {
+      "name": "Ice",
+      "type": "gradient",
+      "stops": [
+        {
+          "value": 0,
+          "r": 20,
+          "g": 20,
+          "b": 40
+        },
+        {
+          "value": 0.5,
+          "r": 100,
+          "g": 180,
+          "b": 220
+        },
+        {
+          "value": 1,
+          "r": 240,
+          "g": 240,
+          "b": 255
+        }
+      ]
+    }
+  },
   "customFunctions": []
 }

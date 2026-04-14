@@ -29,7 +29,7 @@
     <div class="menu-dropdown">
       <div class="menu-option" id="menu-import-colors">Import Color Schema</div>
       <div class="menu-option" id="menu-export-colors">Export Color Schema</div>
-      <div class="menu-option" id="menu-theme">Theme / Application</div>
+      <div class="menu-option" id="menu-theme">Mode : Dark</div>
     </div>
   </div>
   
@@ -47,7 +47,10 @@
       <canvas id="c"></canvas>
       <!-- <div id="fps" style="position:absolute;top:8px;left:8px;font-size:12px;color:var(--accent);background:rgba(0,0,0,.6);padding:2px 6px;border-radius:4px;pointer-events:none">-- fps</div> -->
     </div>
-    <div id="global-controls">
+  </div>
+
+  <div id="right">
+        <div id="global-controls">
       <div class="gctl"><label>Color</label>
         <select id="g-color">
           <option value="gray">Grayscale</option>
@@ -67,7 +70,7 @@
         </select>
       </div>
       
-      
+      <br>  
       <div class="gctl"><label>Pan X</label>
         <input type="number" id="g-panx" value="0" style="width:100%;padding:5px;font-size:13px">
       </div>
@@ -83,14 +86,6 @@
         <span id="z-val" style="font-size:14px;color:var(--text2)">0.0</span>
       </div>
     </div>
-    <div class="toggles">
-      <div class="tog" id="t-invert">Invert</div>
-      <div class="tog" id="t-lightmode">Light</div>
-      <div class="tog" id="t-about">About</div>
-    </div>
-  </div>
-
-  <div id="right">
     <div class="sec">Layers &nbsp;<span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0">drag to reorder</span></div>
     <div id="layers-list"></div>
     <button class="add-layer-btn" id="add-btn">+ Add layer</button>
@@ -100,9 +95,6 @@
     <div class="inject-box">
       <div class="inject-row">
         <button id="custom-noise-btn">Custom Noise</button>
-      </div>
-      <div class="inject-row">
-        <button id="color-schemes-btn">Color Schemes</button>
       </div>
     </div>
 
@@ -320,6 +312,8 @@
 </div>
 
 <script src="noise-lib.js"></script>
+<script src="project.js"></script>
+<script src="colorSchemes.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
