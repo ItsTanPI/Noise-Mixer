@@ -2,23 +2,23 @@
 
 // Example noise functions
 const EXAMPLES = [
-  `function ripple(x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold) {
+  `function ripple(x, y, z, seed, scale, params) {
   let r = Math.sqrt((x - 240) ** 2 + (y - 180) ** 2);
-  return (Math.sin(r / sc - z * 3) + 1) / 2;
+  return (Math.sin(r / scale - z * 3) + 1) / 2;
 }`,
-  `function spiral(x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold) {
+  `function spiral(x, y, z, seed, scale, params) {
   let dx = x - 240, dy = y - 180;
   let a = Math.atan2(dy, dx), r = Math.sqrt(dx*dx + dy*dy);
-  return (Math.sin(a * 4 + r / sc - z * 2) + 1) / 2;
+  return (Math.sin(a * 4 + r / scale - z * 2) + 1) / 2;
 }`,
-  `function tartan(x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold) {
-  return ((Math.sin(x / sc + z) * Math.sin(y / sc + z)) + 1) / 2;
+  `function tartan(x, y, z, seed, scale, params) {
+  return ((Math.sin(x / scale + z) * Math.sin(y / scale + z)) + 1) / 2;
 }`,
-  `function plasma2(x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold) {
-  return (Math.sin(x/sc) + Math.sin(y/sc) + Math.sin((x+y)/sc) + Math.sin(Math.sqrt(x*x+y*y)/sc + z)) / 4 * 0.5 + 0.5;
+  `function plasma2(x, y, z, seed, scale, params) {
+  return (Math.sin(x/scale) + Math.sin(y/scale) + Math.sin((x+y)/scale) + Math.sin(Math.sqrt(x*x+y*y)/scale + z)) / 4 * 0.5 + 0.5;
 }`,
-  `function zigzag(x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold) {
-  let v = Math.sin(x / sc + z) * 0.5 + 0.5;
+  `function zigzag(x, y, z, seed, scale, params) {
+  let v = Math.sin(x / scale + z) * 0.5 + 0.5;
   return Math.abs(2 * v - 1);
 }`
 ];
@@ -67,6 +67,109 @@ const colorSchemes = {
 
 // Constants - Noise types loaded from NoiseLib
 const NOISE_TYPES = NoiseLib.types;
+
+function ensureLayerParams(l) {
+  if (!l.params || typeof l.params !== 'object') l.params = {};
+  if (!l.paramsMeta || typeof l.paramsMeta !== 'object') l.paramsMeta = {};
+
+  // Migrate legacy fields if present
+  if (typeof l.scale === 'number' && l.params.scale === undefined) l.params.scale = l.scale;
+  if (typeof l.octaves === 'number' && l.params.octaves === undefined) l.params.octaves = l.octaves;
+  if (typeof l.falloff === 'number' && l.params.falloff === undefined) l.params.falloff = l.falloff;
+
+  // Apply built-in defaults (if any)
+  const builtInDefaults = builtInParamDefaults[l.type];
+  if (builtInDefaults && typeof builtInDefaults === 'object') {
+    Object.keys(builtInDefaults).forEach(key => {
+      if (l.params[key] === undefined) l.params[key] = builtInDefaults[key];
+    });
+  }
+
+  // Apply custom function defaults (if any)
+  const defaults = customFnParamDefaults[l.type];
+  if (defaults && typeof defaults === 'object') {
+    Object.keys(defaults).forEach(key => {
+      if (l.params[key] === undefined) l.params[key] = defaults[key];
+    });
+  }
+
+  // Auto-infer params meta (if missing)
+  Object.keys(l.params).forEach(key => {
+    if (l.paramsMeta[key]) return;
+    const v = l.params[key];
+    l.paramsMeta[key] = { type: typeof v === 'boolean' ? 'toggle' : 'number' };
+  });
+
+  // Apply built-in meta (if any)
+  const builtInMeta = builtInParamMeta[l.type];
+  if (builtInMeta && typeof builtInMeta === 'object') {
+    Object.keys(builtInMeta).forEach(key => {
+      if (!l.paramsMeta[key]) l.paramsMeta[key] = builtInMeta[key];
+    });
+  }
+
+  return l.params;
+}
+
+function extractDefaultParamsFromSource(src) {
+  const head = src.split(')')[0] || src;
+  const match = head.match(/params\s*=\s*({[\s\S]*})/);
+  if (!match) return null;
+  const literal = match[1];
+  try {
+    return new Function('return (' + literal + ')')();
+  } catch {
+    return null;
+  }
+}
+
+function cacheBuiltInDefaults() {
+  NOISE_TYPES.forEach(type => {
+    if (builtInParamDefaults[type]) return;
+    const fn = NoiseLib.getNoiseFunction(type);
+    if (!fn) return;
+    const defaults = extractDefaultParamsFromSource(fn.toString());
+    if (defaults && typeof defaults === 'object') {
+      builtInParamDefaults[type] = defaults;
+      const meta = {};
+      Object.keys(defaults).forEach(k => {
+        meta[k] = { type: typeof defaults[k] === 'boolean' ? 'toggle' : 'number' };
+      });
+      builtInParamMeta[type] = meta;
+    }
+  });
+}
+
+function applyDefaultsForType(l) {
+  const defaults = customFnParamDefaults[l.type];
+  if (!defaults) return;
+  if (!l.params || typeof l.params !== 'object') l.params = {};
+  Object.keys(defaults).forEach(key => {
+    if (l.params[key] === undefined) l.params[key] = defaults[key];
+  });
+  if (!l.paramsMeta || typeof l.paramsMeta !== 'object') l.paramsMeta = {};
+  const meta = customFnParamMeta[l.type];
+  if (meta) {
+    Object.keys(meta).forEach(key => {
+      if (!l.paramsMeta[key]) l.paramsMeta[key] = meta[key];
+    });
+  }
+}
+
+function normalizeLayer(raw) {
+  const l = { ...raw };
+  if (typeof l.scale !== 'number') l.scale = 60;
+  if (typeof l.seed !== 'number') l.seed = 0;
+  if (typeof l.z !== 'number') l.z = 0;
+  if (typeof l.offsetX !== 'number') l.offsetX = 0;
+  if (typeof l.offsetY !== 'number') l.offsetY = 0;
+  if (!l.blend) l.blend = 'avg';
+  if (typeof l.visible !== 'boolean') l.visible = true;
+  if (typeof l.collapsed !== 'boolean') l.collapsed = false;
+  if (!l.paramsMeta || typeof l.paramsMeta !== 'object') l.paramsMeta = {};
+  ensureLayerParams(l);
+  return l;
+}
 
 // Canvas Setup - Responsive sizing
 const canvasWrap = document.getElementById('canvas-wrap');
@@ -136,6 +239,10 @@ let zValue = 0;
 let uid = 0;
 let layers = [];
 const customFns = {};
+const customFnParamDefaults = {};
+const customFnParamMeta = {};
+const builtInParamDefaults = {};
+const builtInParamMeta = {};
 let dragSrcId = null;
 
 // State tracking for dirty rendering
@@ -152,18 +259,20 @@ let panStartOffsetY = 0;
 
 // Noise Sampling - Uses NoiseLib
 function sampleNoise(l, x, y, z) {
+  cacheBuiltInDefaults();
+  const params = ensureLayerParams(l);
   const noiseFn = NoiseLib.getNoiseFunction(l.type);
   
   if (customFns[l.type]) {
     try {
-      const v = +customFns[l.type](x, y, z, l.scale, l.octaves, l.falloff, l.seed, l.weight, l.contrast, l.threshold);
+      const v = +customFns[l.type](x, y, z, l.seed, params);
       return isNaN(v) ? 0 : Math.max(0, Math.min(1, v));
     } catch (e) {
       return 0;
     }
   }
   
-  return noiseFn(x, y, z, l.scale, l.octaves, l.falloff, l.seed, l.weight, l.contrast, l.threshold);
+  return noiseFn(x, y, z, l.seed, params);
 }
 
 
@@ -246,13 +355,13 @@ function render() {
       for (let li = 0; li < nL; li++) {
         const l = visLayers[li];
         const blend = l.blend;
+        const params = ensureLayerParams(l);
         
         let nx = (x + gOffsetX) * zoom + l.offsetX;
         let ny = (y + gOffsetY) * zoom + l.offsetY;
         let n = sampleNoise(l, nx, ny, z + l.z);
-        n = (n - 0.5) * l.contrast + 0.5 + l.threshold;
         n = n < 0 ? 0 : n > 1 ? 1 : n;
-        const w = Math.max(0, l.weight);
+        const w = 1;
         
         // Apply per-layer blend mode
         if (li === 0) {
@@ -314,26 +423,24 @@ function render() {
 
 // Layer Management
 function mkLayer() {
-  return {
+  const layer = {
     id: uid++,
     type: 'perlin',
-    scale: 60,
-    octaves: 4,
-    falloff: 0.5,
     seed: 0,
-    weight: 1,
-    contrast: 1,
-    threshold: 0,
     z: 0,
     offsetX: 0,
     offsetY: 0,
     blend: 'avg',
     visible: true,
-    collapsed: false
+    collapsed: false,
+    params: {}
   };
+  ensureLayerParams(layer);
+  return layer;
 }
 
 function buildCard(l, idx) {
+  cacheBuiltInDefaults();
   const allTypes = [...NOISE_TYPES, ...Object.keys(customFns)];
   const card = document.createElement('div');
   card.className = 'layer-card';
@@ -390,7 +497,9 @@ function buildCard(l, idx) {
   tSel.addEventListener('change', () => {
     l.type = tSel.value;
     document.getElementById('badge_' + l.id).textContent = l.type;
-    render();
+    ensureLayerParams(l);
+    applyDefaultsForType(l);
+    renderLayers();
   });
     
   const bSel = document.createElement('select');
@@ -408,82 +517,407 @@ function buildCard(l, idx) {
   
   row2.appendChild(tSel);
   row2.appendChild(bSel);
+
+  const editBtn = document.createElement('button');
+  editBtn.textContent = 'Edit Params';
+  editBtn.addEventListener('click', () => openParamEditor(l));
+  row2.appendChild(editBtn);
+
   body.appendChild(row2);
 
-  const sliders = [
-    ['Scale', 4, 400, 1, l.scale, v => l.scale = v],
-    ['Octaves', 1, 8, 1, l.octaves, v => l.octaves = v],
-    ['Falloff', 0.1, 0.9, 0.05, l.falloff, v => l.falloff = v],
-    ['Seed', 0, 9999, 1, l.seed, v => l.seed = v],
-    ['Weight', 0, 2, 0.05, l.weight, v => l.weight = v],
-    ['Contrast', 0.2, 4, 0.05, l.contrast, v => l.contrast = v],
-    ['Threshold', -0.5, 0.5, 0.01, l.threshold, v => l.threshold = v],
-    ['Z', -5, 5, 0.01, l.z, v => l.z = v],
-  ];
-  
-  sliders.forEach(([lbl, mn, mx, st, val, cb]) => {
+  const createDraggableNumberControl = (lbl, getVal, setVal, opts = {}) => {
+    const val = getVal();
     const d = document.createElement('div');
     d.className = 'ctrl';
-    const prec = st < 0.01 ? 3 : st < 0.1 ? 2 : st < 1 ? 2 : 0;
-    d.innerHTML = `<label>${lbl}</label><input type="range" min="${mn}" max="${mx}" step="${st}" value="${val}"><input type="number" class="param-number" min="${mn}" max="${mx}" step="${st}" value="${parseFloat(val).toFixed(prec)}" style="width:50px;padding:4px;margin-left:4px">`;
-    
-    const inp = d.querySelector('input[type=range]');
-    const numInp = d.querySelector('input[type=number]');
-    inp.addEventListener('input', () => {
-      const v = parseFloat(inp.value);
-      numInp.value = v.toFixed(prec);
-      cb(v);
-      render();
-    });
-    numInp.addEventListener('input', () => {
-      const v = parseFloat(numInp.value) || 0;
-      inp.value = v;
-      cb(v);
-      render();
-    });
-    body.appendChild(d);
-  });
-  
-  // Offset controls with draggable number inputs
-  ['X', 'Y'].forEach(axis => {
-    const offsetVal = axis === 'X' ? l.offsetX : l.offsetY;
-    const d = document.createElement('div');
-    d.className = 'ctrl';
-    d.innerHTML = `<label>Offset ${axis}</label><input type="number" value="${offsetVal.toFixed(0)}" style="flex:1;padding:5px"><span class="val" style="min-width:0"></span>`;
-    
+    const minAttr = opts.min !== undefined && opts.min !== null ? ` min="${opts.min}"` : '';
+    const maxAttr = opts.max !== undefined && opts.max !== null ? ` max="${opts.max}"` : '';
+    const step = opts.step ?? 1;
+    const prec = opts.prec ?? 0;
+    d.innerHTML = `<label>${lbl}</label><input type="number" class="param-number" value="${val.toFixed(prec)}" step="${step}"${minAttr}${maxAttr} style="flex:1;padding:5px"><span class="val" style="min-width:0"></span>`;
+
     const inp = d.querySelector('input');
     let dragStart = 0;
     let isDragging = false;
-    const setter = axis === 'X' ? (v => l.offsetX = v) : (v => l.offsetY = v);
-    
-    inp.addEventListener('input', () => {
-      const v = parseFloat(inp.value) || 0;
-      setter(v);
+
+    const applyVal = (v) => {
+      let nv = v;
+      if (opts.min !== undefined && opts.min !== null && nv < opts.min) nv = opts.min;
+      if (opts.max !== undefined && opts.max !== null && nv > opts.max) nv = opts.max;
+      setVal(nv);
+      inp.value = nv.toFixed(prec);
       render();
+    };
+
+    const commitInputValue = () => {
+      const raw = inp.value.trim();
+      if (raw === '') return;
+      const v = parseFloat(raw);
+      applyVal(isNaN(v) ? 0 : v);
+    };
+
+    inp.addEventListener('input', () => {
+      if (isDragging) return;
     });
-    
+    inp.addEventListener('change', commitInputValue);
+    inp.addEventListener('blur', commitInputValue);
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        commitInputValue();
+        inp.blur();
+      } else if (e.key === 'Escape') {
+        inp.value = getVal().toFixed(prec);
+        inp.blur();
+      }
+    });
+
+    inp.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const dir = e.deltaY < 0 ? 1 : -1;
+      const stepVal = step || 1;
+      const current = parseFloat(inp.value) || 0;
+      applyVal(current + dir * stepVal);
+    }, { passive: false });
+
     inp.addEventListener('mousedown', (e) => {
       isDragging = true;
       dragStart = e.clientY;
       inp.style.cursor = 'ns-resize';
     });
-    
+
     document.addEventListener('mousemove', (e) => {
       if (isDragging && d.contains(inp) && document.activeElement === inp) {
         const delta = dragStart - e.clientY;
-        const newVal = (parseFloat(inp.value) || 0) + delta * 0.5;
-        inp.value = newVal.toFixed(0);
-        setter(newVal);
+        const scale = opts.dragScale ?? 0.5;
+        const current = parseFloat(inp.value) || 0;
+        const newVal = current + delta * scale;
+        applyVal(newVal);
         dragStart = e.clientY;
-        render();
       }
     });
-    
+
     document.addEventListener('mouseup', () => {
       isDragging = false;
       inp.style.cursor = 'default';
     });
-    
+
+    body.appendChild(d);
+  };
+
+  if (!l.fixedMeta || typeof l.fixedMeta !== 'object') l.fixedMeta = {};
+
+  const getFixedMeta = (field, defaults) => {
+    const meta = l.fixedMeta[field] || {};
+    return {
+      type: meta.type || defaults.type,
+      min: typeof meta.min === 'number' ? meta.min : defaults.min,
+      max: typeof meta.max === 'number' ? meta.max : defaults.max,
+      step: typeof meta.step === 'number' ? meta.step : defaults.step,
+      options: Array.isArray(meta.options) ? meta.options : defaults.options
+    };
+  };
+
+  const renderFixedControl = (field, label, getVal, setVal, metaDefaults) => {
+    const meta = getFixedMeta(field, metaDefaults);
+    const current = getVal();
+    const d = document.createElement('div');
+    d.className = 'ctrl';
+
+    if (meta.type === 'toggle') {
+      d.innerHTML = `<label>${label}</label><input type="checkbox" ${current ? 'checked' : ''}>`;
+      const inp = d.querySelector('input');
+      inp.addEventListener('change', () => {
+        setVal(inp.checked ? 1 : 0);
+        render();
+      });
+      body.appendChild(d);
+      return;
+    }
+
+    if (meta.type === 'select') {
+      const options = Array.isArray(meta.options) && meta.options.length ? meta.options : ['0', '1'];
+      const currentStr = String(current);
+      d.innerHTML = `<label>${label}</label><select></select>`;
+      const sel = d.querySelector('select');
+      options.forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt;
+        o.textContent = opt;
+        if (opt === currentStr) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.addEventListener('change', () => {
+        const v = parseFloat(sel.value);
+        setVal(isNaN(v) ? 0 : v);
+        render();
+      });
+      body.appendChild(d);
+      return;
+    }
+
+    const min = Number.isFinite(meta.min) ? meta.min : undefined;
+    const max = Number.isFinite(meta.max) ? meta.max : undefined;
+    const step = Number.isFinite(meta.step) ? meta.step : 0.01;
+    const prec = step < 0.01 ? 3 : step < 0.1 ? 2 : step < 1 ? 2 : 0;
+    const minAttr = min !== undefined ? ` min="${min}"` : '';
+    const maxAttr = max !== undefined ? ` max="${max}"` : '';
+
+    if (meta.type === 'range') {
+      const rangeMin = min ?? 0;
+      const rangeMax = max ?? 1;
+      d.innerHTML = `<label>${label}</label><input type="range" min="${rangeMin}" max="${rangeMax}" step="${step}" value="${current}"><input type="number" class="param-number" min="${rangeMin}" max="${rangeMax}" step="${step}" value="${current.toFixed(prec)}" style="width:60px;padding:4px;margin-left:4px">`;
+      const range = d.querySelector('input[type=range]');
+      const num = d.querySelector('input[type=number]');
+      range.addEventListener('input', () => {
+        const v = parseFloat(range.value);
+        setVal(v);
+        num.value = v.toFixed(prec);
+        render();
+      });
+      const commitValue = () => {
+        const raw = num.value.trim();
+        if (raw === '') return;
+        const v = parseFloat(raw);
+        const nv = isNaN(v) ? 0 : v;
+        setVal(nv);
+        range.value = String(nv);
+        num.value = nv.toFixed(prec);
+        render();
+      };
+      num.addEventListener('change', commitValue);
+      num.addEventListener('blur', commitValue);
+      num.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          commitValue();
+          num.blur();
+        } else if (e.key === 'Escape') {
+          num.value = getVal().toFixed(prec);
+          num.blur();
+        }
+      });
+      body.appendChild(d);
+      return;
+    }
+
+    createDraggableNumberControl(label, getVal, setVal, {
+      min,
+      max,
+      step,
+      prec,
+      dragScale: step >= 1 ? 1 : step * 5
+    });
+  };
+
+  // Base control (fixed signature param)
+  renderFixedControl('seed', 'seed', () => l.seed, v => l.seed = v, { type: 'number', min: 0, max: 9999, step: 1, options: [] });
+
+  // Params are fully dynamic (no hardcoded sliders)
+  const params = ensureLayerParams(l);
+
+  // Offset/Z controls with draggable number inputs
+  renderFixedControl('offsetX', 'x', () => l.offsetX, v => l.offsetX = v, { type: 'number', min: null, max: null, step: 0.01, options: [] });
+  renderFixedControl('offsetY', 'y', () => l.offsetY, v => l.offsetY = v, { type: 'number', min: null, max: null, step: 0.01, options: [] });
+  renderFixedControl('z', 'z', () => l.z, v => l.z = v, { type: 'number', min: null, max: null, step: 0.01, options: [] });
+
+  // Custom params (auto-generate UI from params + meta)
+  const paramsMeta = l.paramsMeta || {};
+
+  const getAutoRange = (key, val, meta) => {
+    const mn = typeof meta?.min === 'number' ? meta.min : undefined;
+    const mx = typeof meta?.max === 'number' ? meta.max : undefined;
+    const st = typeof meta?.step === 'number' ? meta.step : undefined;
+    if (mn !== undefined || mx !== undefined || st !== undefined) {
+      return {
+        min: mn ?? 0,
+        max: mx ?? 1,
+        step: st ?? 0.01
+      };
+    }
+
+    const k = String(key).toLowerCase();
+    if (k.includes('scale')) return { min: 1, max: Math.max(200, (Math.abs(val) || 1) * 4), step: 1 };
+    if (k.includes('octave')) return { min: 1, max: 10, step: 1 };
+    if (k.includes('falloff')) return { min: 0, max: 1, step: 0.01 };
+    if (k.includes('warp')) return { min: 0, max: 2, step: 0.01 };
+    if (k.includes('angle')) return { min: 0, max: 180, step: 1 };
+    if (k.includes('contrast')) return { min: 0, max: 3, step: 0.01 };
+    if (k.includes('threshold')) return { min: 0, max: 1, step: 0.01 };
+
+    if (Number.isInteger(val)) return { min: 0, max: Math.max(10, Math.abs(val) * 4), step: 1 };
+    if (val >= 0 && val <= 1) return { min: 0, max: 1, step: 0.01 };
+
+    const span = Math.max(1, Math.abs(val) || 1);
+    return { min: val - span, max: val + span, step: 0.01 };
+  };
+
+  Object.keys(params).forEach(key => {
+    const meta = paramsMeta[key] || { type: typeof params[key] === 'boolean' ? 'toggle' : 'number' };
+    const d = document.createElement('div');
+    d.className = 'ctrl';
+
+    if (meta.type === 'toggle') {
+      d.innerHTML = `<label>${key}</label><input type="checkbox" ${params[key] ? 'checked' : ''}>`;
+      const inp = d.querySelector('input');
+      inp.addEventListener('change', () => {
+        params[key] = inp.checked;
+        render();
+      });
+    } else if (meta.type === 'select') {
+      const options = Array.isArray(meta.options) ? meta.options : [];
+      const current = params[key] ?? (options[0] ?? '');
+      d.innerHTML = `<label>${key}</label><select></select>`;
+      const sel = d.querySelector('select');
+      options.forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt;
+        o.textContent = opt;
+        if (opt === current) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.addEventListener('change', () => {
+        params[key] = sel.value;
+        render();
+      });
+    } else if (meta.type === 'range') {
+      const currentVal = typeof params[key] === 'number' ? params[key] : 0;
+      let { min, max, step } = { min:Number.NEGATIVE_INFINITY, max:Number.POSITIVE_INFINITY, step:0.01 } // getAutoRange(key, currentVal, meta);
+      if (!Number.isFinite(min) || !Number.isFinite(max)) {
+        const auto = getAutoRange(key, currentVal, {});
+        min = auto.min;
+        max = auto.max;
+        step = auto.step;
+      }
+      const prec = step < 0.01 ? 3 : step < 0.1 ? 2 : step < 1 ? 2 : 0;
+      d.innerHTML = `<label>${key}</label><input type="range" min="${min}" max="${max}" step="${step}" value="${currentVal}"><input type="number" class="param-number" min="${min}" max="${max}" step="${step}" value="${currentVal.toFixed(prec)}" style="width:60px;padding:4px;margin-left:4px">`;
+      const range = d.querySelector('input[type=range]');
+      const num = d.querySelector('input[type=number]');
+
+      range.addEventListener('input', () => {
+        const v = parseFloat(range.value);
+        params[key] = v;
+        num.value = v.toFixed(prec);
+        render();
+      });
+
+      num.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const dir = e.deltaY < 0 ? 1 : -1;
+        const stepVal = step || 0.01;
+        const current = parseFloat(num.value) || 0;
+        let v = current + dir * stepVal;
+        if (v < min) v = min;
+        if (v > max) v = max;
+        params[key] = v;
+        range.value = String(v);
+        num.value = v.toFixed(prec);
+        render();
+      }, { passive: false });
+
+      const commitParamValue = () => {
+        const raw = num.value.trim();
+        if (raw === '') return;
+        const v = parseFloat(raw);
+        const nv = isNaN(v) ? 0 : v;
+        params[key] = nv;
+        range.value = String(nv);
+        num.value = nv.toFixed(prec);
+        render();
+      };
+
+      num.addEventListener('input', () => {});
+      num.addEventListener('change', commitParamValue);
+      num.addEventListener('blur', commitParamValue);
+      num.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          commitParamValue();
+          num.blur();
+        } else if (e.key === 'Escape') {
+          num.value = (params[key] ?? 0).toFixed(prec);
+          num.blur();
+        }
+      });
+    } else if (meta.type === 'number') {
+      const currentVal = typeof params[key] === 'number' ? params[key] : 0;
+      const min = Number.isFinite(meta.min) ? meta.min : -Infinity;
+      const max = Number.isFinite(meta.max) ? meta.max : Infinity;
+      const step = Number.isFinite(meta.step) ? meta.step : 0.01;
+      const prec = step < 0.01 ? 3 : step < 0.1 ? 2 : step < 1 ? 2 : 0;
+      const minAttr = Number.isFinite(min) ? ` min="${min}"` : '';
+      const maxAttr = Number.isFinite(max) ? ` max="${max}"` : '';
+      d.innerHTML = `<label>${key}</label><input type="number" class="param-number"${minAttr}${maxAttr} step="${step}" value="${currentVal.toFixed(prec)}" style="flex:1;padding:5px"><span class="val" style="min-width:0"></span>`;
+      const num = d.querySelector('input[type=number]');
+      let dragStart = 0;
+      let isDragging = false;
+
+      const applyVal = (v) => {
+        let nv = v;
+        if (Number.isFinite(min) && nv < min) nv = min;
+        if (Number.isFinite(max) && nv > max) nv = max;
+        params[key] = nv;
+        num.value = nv.toFixed(prec);
+        render();
+      };
+
+      const commitParamValue = () => {
+        const raw = num.value.trim();
+        if (raw === '') return;
+        const v = parseFloat(raw);
+        applyVal(isNaN(v) ? 0 : v);
+      };
+
+      num.addEventListener('input', () => {
+        if (isDragging) return;
+      });
+      num.addEventListener('change', commitParamValue);
+      num.addEventListener('blur', commitParamValue);
+      num.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          commitParamValue();
+          num.blur();
+        } else if (e.key === 'Escape') {
+          num.value = (params[key] ?? 0).toFixed(prec);
+          num.blur();
+        }
+      });
+
+      num.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const dir = e.deltaY < 0 ? 1 : -1;
+        const stepVal = step || 0.01;
+        const current = parseFloat(num.value) || 0;
+        applyVal(current + dir * stepVal);
+      }, { passive: false });
+
+      num.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        dragStart = e.clientY;
+        num.style.cursor = 'ns-resize';
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (isDragging && d.contains(num) && document.activeElement === num) {
+          const delta = dragStart - e.clientY;
+          const dragScale = step >= 1 ? 0.5 : step * 5;
+          const current = parseFloat(num.value) || 0;
+          const newVal = current + delta * dragScale;
+          applyVal(newVal);
+          dragStart = e.clientY;
+        }
+      });
+
+      document.addEventListener('mouseup', () => {
+        isDragging = false;
+        num.style.cursor = 'default';
+      });
+    } else {
+      d.innerHTML = `<label>${key}</label><input type="number" value="${params[key]}" style="flex:1;padding:5px"><span class="val" style="min-width:0"></span>`;
+      const inp = d.querySelector('input');
+      inp.addEventListener('input', () => {
+        const v = parseFloat(inp.value) || 0;
+        params[key] = v;
+        render();
+      });
+    }
+
     body.appendChild(d);
   });
 
@@ -539,7 +973,8 @@ function renderLayers() {
 }
 
 function addLayer(l) {
-  layers.push(l || mkLayer());
+  const layer = l ? normalizeLayer(l) : mkLayer();
+  layers.push(layer);
   renderLayers();
 }
 
@@ -557,17 +992,368 @@ function injectCustom() {
     const m = src.match(/function\s+(\w+)/);
     const name = m ? m[1] : 'custom_' + Object.keys(customFns).length;
     customFns[name] = fn;
+
+    const defaults = extractDefaultParamsFromSource(src);
+    if (defaults && typeof defaults === 'object') {
+      customFnParamDefaults[name] = defaults;
+      const meta = {};
+      Object.keys(defaults).forEach(k => {
+        meta[k] = { type: typeof defaults[k] === 'boolean' ? 'toggle' : 'number' };
+      });
+      customFnParamMeta[name] = meta;
+    }
     
     const l = mkLayer();
     l.type = name;
+    applyDefaultsForType(l);
     addLayer(l);
     
-    msg.textContent = name + ' injected! Available params: x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold';
+    msg.textContent = name + ' injected! Signature: (x, y, z, seed, params) — add params via Custom Params';
     msg.className = 'msg ok';
   } catch (e) {
     msg.textContent = 'Error: ' + e.message + ' (check function signature)';
     msg.className = 'msg err';
   }
+}
+
+// Param Editor Modal
+const paramEditorModal = document.getElementById('param-editor-modal');
+const paramEditorList = document.getElementById('param-editor-list');
+const paramEditorAdd = document.getElementById('param-editor-add');
+const paramEditorSave = document.getElementById('param-editor-save');
+const paramEditorCancel = document.getElementById('param-editor-cancel');
+const paramEditorClose = document.getElementById('param-editor-close');
+
+function getLayerById(id) {
+  return layers.find(l => String(l.id) === String(id));
+}
+
+function renderParamEditor(layer) {
+  if (!paramEditorList) return;
+  paramEditorList.innerHTML = '';
+  ensureLayerParams(layer);
+
+  const addFixedRow = (label, field, value) => {
+    if (!layer.fixedMeta || typeof layer.fixedMeta !== 'object') layer.fixedMeta = {};
+    const meta = layer.fixedMeta[field] || { type: 'number', step: 0.01 };
+    const row = document.createElement('div');
+    row.className = 'param-row';
+    row.dataset.fixedField = field;
+
+    row.innerHTML = `
+      <div>
+        <div class="param-label">Name</div>
+        <input class="param-name" value="${label}" disabled>
+      </div>
+      <div>
+        <div class="param-label">Type</div>
+        <select class="param-type">
+          <option value="number">number</option>
+          <option value="range">range</option>
+          <option value="toggle">toggle</option>
+          <option value="select">select</option>
+        </select>
+      </div>
+      <div>
+        <div class="param-label">Default</div>
+        <input class="param-default" value="${value}">
+      </div>
+      <div>
+        <div class="param-label">Min</div>
+        <input class="param-min">
+      </div>
+      <div>
+        <div class="param-label">Max</div>
+        <input class="param-max">
+      </div>
+      <div>
+        <div class="param-label">Step</div>
+        <input class="param-step">
+      </div>
+      <div>
+        <div class="param-label">Options (comma)</div>
+        <input class="param-options">
+      </div>
+      <button class="param-remove" title="Remove" style="display:none">×</button>
+    `;
+
+    const typeSel = row.querySelector('.param-type');
+    const minInp = row.querySelector('.param-min');
+    const maxInp = row.querySelector('.param-max');
+    const stepInp = row.querySelector('.param-step');
+    const optInp = row.querySelector('.param-options');
+
+    typeSel.value = meta.type || 'number';
+    minInp.value = meta.min ?? '';
+    maxInp.value = meta.max ?? '';
+    stepInp.value = meta.step ?? '';
+    optInp.value = Array.isArray(meta.options) ? meta.options.join(', ') : '';
+
+    const refreshVisibility = () => {
+      const t = typeSel.value;
+      const showRange = t === 'range' || t === 'number';
+      minInp.parentElement.style.display = showRange ? '' : 'none';
+      maxInp.parentElement.style.display = showRange ? '' : 'none';
+      stepInp.parentElement.style.display = showRange ? '' : 'none';
+      optInp.parentElement.style.display = t === 'select' ? '' : 'none';
+      if ((t === 'range' || t === 'number') && !stepInp.value) stepInp.value = '0.01';
+    };
+    refreshVisibility();
+    typeSel.addEventListener('change', refreshVisibility);
+
+    paramEditorList.appendChild(row);
+  };
+
+  // Fixed parameters (locked names)
+  addFixedRow('x', 'offsetX', layer.offsetX ?? 0);
+  addFixedRow('y', 'offsetY', layer.offsetY ?? 0);
+  addFixedRow('z', 'z', layer.z ?? 0);
+  addFixedRow('seed', 'seed', layer.seed ?? 0);
+
+  const keys = Object.keys(layer.params);
+  if (!keys.length) {
+    const empty = document.createElement('div');
+    empty.className = 'hint';
+    empty.textContent = 'No params yet. Click “+ Add Param” to create one.';
+    paramEditorList.appendChild(empty);
+  }
+
+  keys.forEach(key => {
+    const meta = layer.paramsMeta?.[key] || { type: typeof layer.params[key] === 'boolean' ? 'toggle' : 'number' };
+    const row = document.createElement('div');
+    row.className = 'param-row';
+
+    row.innerHTML = `
+      <div>
+        <div class="param-label">Name</div>
+        <input class="param-name" value="${key}">
+      </div>
+      <div>
+        <div class="param-label">Type</div>
+        <select class="param-type">
+          <option value="number">number</option>
+          <option value="range">range</option>
+          <option value="toggle">toggle</option>
+          <option value="select">select</option>
+        </select>
+      </div>
+      <div>
+        <div class="param-label">Default</div>
+        <input class="param-default">
+      </div>
+      <div>
+        <div class="param-label">Min</div>
+        <input class="param-min">
+      </div>
+      <div>
+        <div class="param-label">Max</div>
+        <input class="param-max">
+      </div>
+      <div>
+        <div class="param-label">Step</div>
+        <input class="param-step">
+      </div>
+      <div>
+        <div class="param-label">Options (comma)</div>
+        <input class="param-options">
+      </div>
+      <button class="param-remove" title="Remove">×</button>
+    `;
+
+    const typeSel = row.querySelector('.param-type');
+    const defInp = row.querySelector('.param-default');
+    const minInp = row.querySelector('.param-min');
+    const maxInp = row.querySelector('.param-max');
+    const stepInp = row.querySelector('.param-step');
+    const optInp = row.querySelector('.param-options');
+    const removeBtn = row.querySelector('.param-remove');
+
+    typeSel.value = meta.type || 'number';
+    defInp.value = layer.params[key];
+    minInp.value = meta.min ?? '';
+    maxInp.value = meta.max ?? '';
+    stepInp.value = meta.step ?? '';
+    optInp.value = Array.isArray(meta.options) ? meta.options.join(', ') : '';
+
+    const refreshVisibility = () => {
+      const t = typeSel.value;
+      const showRange = t === 'range' || t === 'number';
+      minInp.parentElement.style.display = showRange ? '' : 'none';
+      maxInp.parentElement.style.display = showRange ? '' : 'none';
+      stepInp.parentElement.style.display = showRange ? '' : 'none';
+      optInp.parentElement.style.display = t === 'select' ? '' : 'none';
+      if (t === 'toggle') {
+        defInp.value = defInp.value === 'true' || defInp.value === 'false' ? defInp.value : 'false';
+      }
+      if ((t === 'range' || t === 'number') && !stepInp.value) {
+        stepInp.value = '0.01';
+      }
+    };
+    refreshVisibility();
+    typeSel.addEventListener('change', refreshVisibility);
+
+    removeBtn.addEventListener('click', () => row.remove());
+
+    paramEditorList.appendChild(row);
+  });
+}
+
+function openParamEditor(layer) {
+  if (!paramEditorModal) return;
+  paramEditorModal.dataset.lid = layer.id;
+  renderParamEditor(layer);
+  paramEditorModal.classList.remove('hidden');
+}
+
+if (paramEditorAdd) {
+  paramEditorAdd.addEventListener('click', () => {
+    if (!paramEditorList) return;
+    const row = document.createElement('div');
+    row.className = 'param-row';
+    row.innerHTML = `
+      <div>
+        <div class="param-label">Name</div>
+        <input class="param-name" value="param">
+      </div>
+      <div>
+        <div class="param-label">Type</div>
+        <select class="param-type">
+          <option value="number">number</option>
+          <option value="range">range</option>
+          <option value="toggle">toggle</option>
+          <option value="select">select</option>
+        </select>
+      </div>
+      <div>
+        <div class="param-label">Default</div>
+        <input class="param-default" value="0">
+      </div>
+      <div>
+        <div class="param-label">Min</div>
+        <input class="param-min" value="0">
+      </div>
+      <div>
+        <div class="param-label">Max</div>
+        <input class="param-max" value="1">
+      </div>
+      <div>
+        <div class="param-label">Step</div>
+        <input class="param-step" value="0.01">
+      </div>
+      <div>
+        <div class="param-label">Options (comma)</div>
+        <input class="param-options" value="">
+      </div>
+      <button class="param-remove" title="Remove">×</button>
+    `;
+    row.querySelector('.param-remove').addEventListener('click', () => row.remove());
+    paramEditorList.appendChild(row);
+  });
+}
+
+function closeParamEditor() {
+  if (paramEditorModal) paramEditorModal.classList.add('hidden');
+}
+
+if (paramEditorCancel) paramEditorCancel.addEventListener('click', closeParamEditor);
+if (paramEditorClose) paramEditorClose.addEventListener('click', closeParamEditor);
+if (paramEditorModal) {
+  paramEditorModal.addEventListener('click', (e) => {
+    if (e.target === paramEditorModal) closeParamEditor();
+  });
+}
+
+if (paramEditorSave) {
+  paramEditorSave.addEventListener('click', () => {
+    const lid = paramEditorModal?.dataset?.lid;
+    const layer = getLayerById(lid);
+    if (!layer || !paramEditorList) return;
+
+    const rows = Array.from(paramEditorList.querySelectorAll('.param-row'));
+    const newParams = {};
+    const newMeta = {};
+
+    if (!layer.fixedMeta || typeof layer.fixedMeta !== 'object') layer.fixedMeta = {};
+
+    rows.forEach(row => {
+      const fixedField = row.dataset.fixedField;
+      if (fixedField) {
+        const type = row.querySelector('.param-type')?.value || 'number';
+        const defValRaw = row.querySelector('.param-default')?.value;
+        const minRaw = row.querySelector('.param-min')?.value;
+        const maxRaw = row.querySelector('.param-max')?.value;
+        const stepRaw = row.querySelector('.param-step')?.value;
+        const optRaw = row.querySelector('.param-options')?.value;
+
+        let val = defValRaw;
+        if (type === 'toggle') {
+          val = defValRaw === 'true' || defValRaw === true ? 1 : 0;
+        } else {
+          const v = parseFloat(defValRaw);
+          val = isNaN(v) ? 0 : v;
+        }
+
+        if (fixedField === 'seed') layer.seed = Math.round(val);
+        else if (fixedField === 'offsetX') layer.offsetX = val;
+        else if (fixedField === 'offsetY') layer.offsetY = val;
+        else if (fixedField === 'z') layer.z = val;
+
+        const minVal = parseFloat(minRaw);
+        const maxVal = parseFloat(maxRaw);
+        const stepVal = parseFloat(stepRaw);
+        const meta = { type };
+        if (!isNaN(minVal)) meta.min = minVal;
+        if (!isNaN(maxVal)) meta.max = maxVal;
+        meta.step = !isNaN(stepVal) ? stepVal : 0.01;
+        if (type === 'select') {
+          meta.options = (optRaw || '').split(',').map(s => s.trim()).filter(Boolean);
+        }
+        layer.fixedMeta[fixedField] = meta;
+        return;
+      }
+      const name = row.querySelector('.param-name')?.value?.trim();
+      if (!name) return;
+      const type = row.querySelector('.param-type')?.value || 'number';
+      const defValRaw = row.querySelector('.param-default')?.value;
+      const minRaw = row.querySelector('.param-min')?.value;
+      const maxRaw = row.querySelector('.param-max')?.value;
+      const stepRaw = row.querySelector('.param-step')?.value;
+      const optRaw = row.querySelector('.param-options')?.value;
+
+      let defVal = defValRaw;
+      if (type === 'toggle') {
+        defVal = defValRaw === 'true' || defValRaw === true;
+      } else if (type === 'number' || type === 'range') {
+        const n = parseFloat(defValRaw);
+        defVal = isNaN(n) ? 0 : n;
+      }
+
+      newParams[name] = defVal;
+      const meta = { type };
+      if (type === 'range' || type === 'number') {
+        const minVal = parseFloat(minRaw);
+        const maxVal = parseFloat(maxRaw);
+        const stepVal = parseFloat(stepRaw);
+        if (!isNaN(minVal)) meta.min = minVal;
+        if (!isNaN(maxVal)) meta.max = maxVal;
+        meta.step = !isNaN(stepVal) ? stepVal : 0.01;
+      }
+      if (type === 'select') {
+        const opts = (optRaw || '').split(',').map(s => s.trim()).filter(Boolean);
+        meta.options = opts;
+        if (!opts.includes(String(defVal))) {
+          const fallback = opts[0] || '';
+          newParams[name] = fallback;
+        }
+      }
+      newMeta[name] = meta;
+    });
+
+    layer.params = newParams;
+    layer.paramsMeta = newMeta;
+    renderLayers();
+    closeParamEditor();
+  });
 }
 
 // ============================================================================
@@ -625,6 +1411,8 @@ ${customFunctionsCode}
 const ${sanitizedName} = (function() {
   const globalState = ${JSON.stringify(gState)};
   const layers = ${JSON.stringify(layers)};
+  const customParamDefaults = ${JSON.stringify(customFnParamDefaults)};
+  const customParamMeta = ${JSON.stringify(customFnParamMeta)};
   
   // Add custom functions to NoiseLib
   const customFunctions = {
@@ -632,10 +1420,11 @@ ${customFunctionsRegistry}
   };
   
   function sampleNoise(layer, x, y, z) {
+    const params = layer.params || {};
     // Check custom functions first
     if (customFunctions[layer.type] && typeof customFunctions[layer.type] === 'function') {
       try {
-        const v = customFunctions[layer.type](x, y, z, layer.scale, layer.octaves, layer.falloff, layer.seed, layer.weight, layer.contrast, layer.threshold);
+        const v = customFunctions[layer.type](x, y, z, layer.seed, params);
         return isNaN(v) ? 0 : Math.max(0, Math.min(1, v));
       } catch (e) {
         console.error('Error in custom function ' + layer.type + ':', e);
@@ -645,7 +1434,7 @@ ${customFunctionsRegistry}
     
     // Fall back to NoiseLib functions
     const noiseFn = NoiseLib.getNoiseFunction(layer.type);
-    return noiseFn(x, y, z, layer.scale, layer.octaves, layer.falloff, layer.seed, layer.weight, layer.contrast, layer.threshold);
+    return noiseFn(x, y, z, layer.seed, params);
   }
   
   function getValue(x, y, z = 0) {
@@ -655,13 +1444,13 @@ ${customFunctionsRegistry}
     let final = 0;
     for (let li = 0; li < visLayers.length; li++) {
       const layer = visLayers[li];
+      const params = layer.params || {};
       let nx = (x + globalState.offsetX) * globalState.zoom + layer.offsetX;
       let ny = (y + globalState.offsetY) * globalState.zoom + layer.offsetY;
       
       let n = sampleNoise(layer, nx, ny, z + layer.z);
-      n = (n - 0.5) * layer.contrast + 0.5 + layer.threshold;
       n = n < 0 ? 0 : n > 1 ? 1 : n;
-      const w = Math.max(0, layer.weight);
+      const w = 1;
       
       if (li === 0) {
         final = n * w;
@@ -691,6 +1480,8 @@ ${customFunctionsRegistry}
     getValue,
     getState: () => ({...globalState}),
     getLayers: () => [...layers],
+    getParamDefaults: () => ({...customParamDefaults}),
+    getParamMeta: () => ({...customParamMeta}),
     NoiseLib,
     customFunctions,
     projectName: '${projectName}'
@@ -1337,7 +2128,7 @@ function loadNoiseConfiguration(jsonString, modal, msgEl) {
       });
     }
     
-    layers = data.layers.map(l => ({...l, id: uid++}));
+    layers = data.layers.map(l => normalizeLayer({ ...l, id: uid++ }));
     
     document.getElementById('g-color').value = gState.color;
     document.getElementById('g-res').value = gState.res;

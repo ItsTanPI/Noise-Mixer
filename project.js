@@ -13,7 +13,9 @@ function saveProject() {
     customFunctions: Object.keys(customFns).map(cf => ({
       name: cf,
       code: customFns[cf].toString()
-    }))
+    })),
+    customParamDefaults: customFnParamDefaults,
+    customParamMeta: customFnParamMeta
   };
 
   const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -59,8 +61,16 @@ function loadProject(jsonString) {
         });
       }
 
+      // Restore custom param defaults/meta
+      if (data.customParamDefaults && typeof data.customParamDefaults === 'object') {
+        Object.assign(customFnParamDefaults, data.customParamDefaults);
+      }
+      if (data.customParamMeta && typeof data.customParamMeta === 'object') {
+        Object.assign(customFnParamMeta, data.customParamMeta);
+      }
+
       // Restore layers
-      layers = data.layers.map(l => ({ ...l, id: uid++ }));
+      layers = data.layers.map(l => normalizeLayer({ ...l, id: uid++ }));
 
       // Update UI controls
       const colorSelect = document.getElementById('g-color');
