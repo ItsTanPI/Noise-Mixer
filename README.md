@@ -12,7 +12,7 @@ Noise Mixer was built as a **utility tool** for generating procedural noise patt
 
 ## What is it?
 
-Noise Mixer lets you create complex procedural textures and patterns by combining different noise algorithms (Perlin, Simplex, Worley, etc.) into layers. Each layer can be customized with scale, octaves, masks, and blending modes. What you see on the canvas is exactly what you get.
+Noise Mixer lets you create complex procedural textures and patterns by combining different noise algorithms (Perlin, Ridged, Billowy, Voronoi, Worley, Sine, Checkerboard, Domain Warp, Voronoi Cell) into layers. Each layer is fully customizable via dynamic parameters and blend modes. What you see on the canvas is exactly what you get.
 
 ## Development
 - **Acknowledgment**: System architecture and engineering designed by Me(TanPi), with coding & docs assistance from AI under proper reviewing and supervision.
@@ -27,24 +27,45 @@ Noise Mixer lets you create complex procedural textures and patterns by combinin
    - **Zoom**: Zoom in/out on the canvas
    - **Z Position**: Control the z-axis for animation
 4. **Adjust parameters** - Each layer has:
-   - **Type**: Choose the noise algorithm
-   - **Scale**: How big the features are (larger = smoother)
-   - **Octaves**: How many levels of detail
-   - **Seed**: Different number = different pattern
-   - **Blend**: How to combine with layers below (average, multiply, add, etc.)
-   - **Mask**: Apply a shape (circle, gradient, square, etc.)
-   - **Weight/Contrast/Threshold**: Fine-tune the output
-5. **Explore** - Use mouse to pan, scroll to zoom
+  - **Type**: Choose the noise algorithm
+  - **Blend**: How to combine with layers below (average, multiply, add, etc.)
+  - **Seed / X / Y / Z**: Fixed parameters with editable UI types (name locked)
+  - **Dynamic Params**: Auto-generated from each noise function’s `params` object
+  - **Contrast / Threshold**: Built into every noise function
+  - **Edit Params**: Open the Param Editor to add/edit param types (number/range/toggle/select)
+5. **Explore** - Use mouse to pan, scroll to zoom, and mouse wheel on number inputs
 6. **Export** - Save your creation for use elsewhere
+
+## Custom Function Boilerplate
+
+Use this template when adding a custom noise function:
+
+```js
+function customNoise(x, y, z, seed, params = {
+  scale: 60,
+  contrast: 1,
+  threshold: 0
+}) {
+  const scale = params.scale ?? 60;
+  const r = Math.sqrt((x - 240) ** 2 + (y - 180) ** 2);
+  return (Math.sin(r / scale - z * 3) + 1) / 2;
+}
+```
+
+Notes:
+- **Name matters**: injecting a function with the same name will overwrite the existing custom function.
+- **Return range**: always return a value between 0 and 1.
 
 ### Quick Tips
 - Left-click + drag to pan the canvas
 - Scroll wheel to zoom in/out
+- Mouse wheel works on draggable number inputs
 - Change **Color** on the left to preview with different color schemes
 - Drag layers to reorder them
 - Click the eye icon to hide/show layers
 - Collapse/expand **Global Controls** and layer cards by clicking the arrows
 - **Mobile-friendly** - Fully responsive UI that works on tablets and phones
+ - **Resolution** includes 8px (ultra fast), 4px, 2px, 1px
 
 ## Exporting & Using the Noise Generator
 
@@ -91,7 +112,7 @@ The exported JS file is completely standalone—no dependencies needed. It inclu
   
   // Direct access to NoiseLib for more control
   const perlin = MyNoise.NoiseLib.getNoiseFunction('perlin');
-  const rawValue = perlin(x, y, z, seed, { scale: 60, octaves: 4, falloff: 0.5 });
+  const rawValue = perlin(x, y, z, seed, { scale: 60, octaves: 4, falloff: 0.5, contrast: 1, threshold: 0 });
 </script>
 ```
 
@@ -111,6 +132,7 @@ Just include the file and call `getValue(x, y)` to get your procedural noise.
 1. Click **File > Save** in the menu bar
 2. A `.json` file downloads containing:
    - All layers and their parameters
+  - Param metadata (types, min/max/step/options) including fixed params
    - Global state (zoom, pan, resolution, color scheme)
    - All custom functions you've created
    - All color schemes you've edited

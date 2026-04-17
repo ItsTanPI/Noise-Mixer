@@ -220,7 +220,8 @@
   return (Math.sin(r / scale - z * 3) + 1) / 2;
 }</textarea>
           <div style="display:flex;gap:8px;justify-content:flex-end">
-            <button id="example-btn" style="padding:6px 12px;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer">Random example</button>
+            <button id="example-prev" style="padding:6px 12px;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer">Previous</button>
+            <button id="example-next" style="padding:6px 12px;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer">Next</button>
             <button id="inject-btn" style="padding:6px 12px;border:none;background:var(--accent);color:white;border-radius:4px;cursor:pointer">Inject &amp; add</button>
           </div>
           <div id="inject-msg" class="msg"></div>
@@ -350,6 +351,10 @@
 </div>
 
 <script src="noise-lib.js"></script>
+<script src="state.js"></script>
+<script src="render.js"></script>
+<script src="ui-layers.js"></script>
+<script src="export.js"></script>
 <script src="project.js"></script>
 <script src="colorSchemes.js"></script>
 <script src="app.js"></script>
