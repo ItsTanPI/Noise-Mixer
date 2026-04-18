@@ -59,7 +59,7 @@
   </div>
 
   <div id="right">
-    <div class="sec">Global Controls &nbsp;<span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0">modifies the final noise </span></div>
+    <div class="sec">Global Controls &nbsp;<span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0">Left-click + drag to pan | Scroll to zoom</span></div>
     <div id="global-controls-card" class="layer-card">
       
       <div class="card-header">
@@ -78,6 +78,7 @@
 
       <div class="gctl"><label>Resolution</label>
         <select id="g-res">
+          <option value="8">8px (ultra fast)</option>
           <option value="4">4px (fastest)</option>
           <option value="2" selected>2px</option>
           <option value="1">1px (full)</option>
@@ -201,19 +202,50 @@
       </div>
       <div class="modal-body" style="max-height:70vh;overflow-y:auto">
         <div style="display:flex;flex-direction:column;gap:12px">
-          <div class="hint"><strong>Parameters:</strong> <code>x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold</code></div>
+          <div class="hint"><strong>Parameters:</strong> <code>x, y, z, seed, params</code></div>
+          <div class="hint"><strong>Params object:</strong> <code>{ scale, octaves, falloff, ...custom }</code></div>
           <div class="hint"><strong>Returns:</strong> number <code>0 to 1</code></div>
-          <div class="hint"><strong>Canvas:</strong> Left-click + drag to pan | Scroll to zoom</div>
           <label style="font-weight:bold;color:var(--text);display:block;margin-bottom:6px">Function Code:</label>
-          <textarea id="custom-src" style="width:100%;height:200px;padding:8px;border:1px solid var(--border2);border-radius:4px;font-family:monospace;font-size:12px;background:var(--bg2);color:var(--text)">function ripple(x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold) {
-  let r = Math.sqrt((x - 240) ** 2 + (y - 180) ** 2);
-  return (Math.sin(r / sc) + 1) / 2;
+              <textarea id="custom-src" style="width:100%;height:200px;padding:8px;border:1px solid var(--border2);border-radius:4px;font-family:monospace;font-size:12px;background:var(--bg2);color:var(--text)">function customNoise(x, y, z, seed, params = {
+  // Add your params here
+  scale: 60,
+  contrast: 1,
+  threshold: 0
+}) {
+  // Use params safely
+  const scale = params.scale ?? 60;
+
+  // Return a value in [0, 1]
+  const r = Math.sqrt((x - 240) ** 2 + (y - 180) ** 2);
+  return (Math.sin(r / scale - z * 3) + 1) / 2;
 }</textarea>
           <div style="display:flex;gap:8px;justify-content:flex-end">
-            <button id="example-btn" style="padding:6px 12px;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer">Random example</button>
+            <button id="example-prev" style="padding:6px 12px;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer">Previous</button>
+            <button id="example-next" style="padding:6px 12px;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer">Next</button>
             <button id="inject-btn" style="padding:6px 12px;border:none;background:var(--accent);color:white;border-radius:4px;cursor:pointer">Inject &amp; add</button>
           </div>
           <div id="inject-msg" class="msg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Param Editor Modal -->
+  <div id="param-editor-modal" class="modal hidden">
+    <div class="modal-content" style="max-width:700px">
+      <div class="modal-header">
+        <h2>Parameter Editor</h2>
+        <button class="modal-close" id="param-editor-close">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+        <div class="hint">Define each parameter and its UI type. These settings are saved and exported.</div>
+        <div id="param-editor-list" class="param-editor-list"></div>
+        <div style="display:flex;gap:8px;justify-content:space-between;margin-top:12px">
+          <button id="param-editor-add" style="padding:6px 12px;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer">+ Add Param</button>
+          <div style="display:flex;gap:8px">
+            <button id="param-editor-cancel" style="padding:6px 12px;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer">Cancel</button>
+            <button id="param-editor-save" style="padding:6px 12px;border:none;background:var(--accent);color:white;border-radius:4px;cursor:pointer">Save</button>
+          </div>
         </div>
       </div>
     </div>
@@ -319,6 +351,10 @@
 </div>
 
 <script src="noise-lib.js"></script>
+<script src="state.js"></script>
+<script src="render.js"></script>
+<script src="ui-layers.js"></script>
+<script src="export.js"></script>
 <script src="project.js"></script>
 <script src="colorSchemes.js"></script>
 <script src="app.js"></script>

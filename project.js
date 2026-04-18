@@ -1,7 +1,7 @@
 // Project Management Module - Save and Load Projects with all data
 
 function saveProject() {
-  const projectName = currentProjectName || 'Untitled Project';
+  const projectName = window.currentProjectName || 'Untitled Project';
   const exportData = {
     version: '1.0',
     timestamp: new Date().toISOString(),
@@ -13,7 +13,9 @@ function saveProject() {
     customFunctions: Object.keys(customFns).map(cf => ({
       name: cf,
       code: customFns[cf].toString()
-    }))
+    })),
+    customParamDefaults: customFnParamDefaults,
+    customParamMeta: customFnParamMeta
   };
 
   const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -36,8 +38,9 @@ function loadProject(jsonString) {
 
       // Restore project name
       if (data.projectName) {
-        currentProjectName = data.projectName;
-        document.getElementById('project-name-display').textContent = currentProjectName;
+        window.currentProjectName = data.projectName;
+        const display = document.getElementById('project-name-display');
+        if (display) display.textContent = window.currentProjectName;
       }
 
       // Restore global state
@@ -59,8 +62,16 @@ function loadProject(jsonString) {
         });
       }
 
+      // Restore custom param defaults/meta
+      if (data.customParamDefaults && typeof data.customParamDefaults === 'object') {
+        Object.assign(customFnParamDefaults, data.customParamDefaults);
+      }
+      if (data.customParamMeta && typeof data.customParamMeta === 'object') {
+        Object.assign(customFnParamMeta, data.customParamMeta);
+      }
+
       // Restore layers
-      layers = data.layers.map(l => ({ ...l, id: uid++ }));
+      layers = data.layers.map(l => normalizeLayer({ ...l, id: uid++ }));
 
       // Update UI controls
       const colorSelect = document.getElementById('g-color');

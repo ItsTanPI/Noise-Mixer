@@ -2,719 +2,26 @@
 
 // Example noise functions
 const EXAMPLES = [
-  `function ripple(x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold) {
+  `function ripple(x, y, z, seed, scale, params) {
   let r = Math.sqrt((x - 240) ** 2 + (y - 180) ** 2);
-  return (Math.sin(r / sc - z * 3) + 1) / 2;
+  return (Math.sin(r / scale - z * 3) + 1) / 2;
 }`,
-  `function spiral(x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold) {
+  `function spiral(x, y, z, seed, scale, params) {
   let dx = x - 240, dy = y - 180;
   let a = Math.atan2(dy, dx), r = Math.sqrt(dx*dx + dy*dy);
-  return (Math.sin(a * 4 + r / sc - z * 2) + 1) / 2;
+  return (Math.sin(a * 4 + r / scale - z * 2) + 1) / 2;
 }`,
-  `function tartan(x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold) {
-  return ((Math.sin(x / sc + z) * Math.sin(y / sc + z)) + 1) / 2;
+  `function tartan(x, y, z, seed, scale, params) {
+  return ((Math.sin(x / scale + z) * Math.sin(y / scale + z)) + 1) / 2;
 }`,
-  `function plasma2(x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold) {
-  return (Math.sin(x/sc) + Math.sin(y/sc) + Math.sin((x+y)/sc) + Math.sin(Math.sqrt(x*x+y*y)/sc + z)) / 4 * 0.5 + 0.5;
+  `function plasma2(x, y, z, seed, scale, params) {
+  return (Math.sin(x/scale) + Math.sin(y/scale) + Math.sin((x+y)/scale) + Math.sin(Math.sqrt(x*x+y*y)/scale + z)) / 4 * 0.5 + 0.5;
 }`,
-  `function zigzag(x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold) {
-  let v = Math.sin(x / sc + z) * 0.5 + 0.5;
+  `function zigzag(x, y, z, seed, scale, params) {
+  let v = Math.sin(x / scale + z) * 0.5 + 0.5;
   return Math.abs(2 * v - 1);
 }`
 ];
-
-// Color Schemes System
-const colorSchemes = {
-  gray: {
-    name: 'Grayscale',
-    type: 'gradient',
-    stops: [
-      { value: 0, r: 0, g: 0, b: 0 },
-      { value: 1, r: 255, g: 255, b: 255 }
-    ]
-  },
-  terrain: {
-    name: 'Terrain',
-    type: 'stops',
-    stops: [
-      { value: 0.35, r: 30, g: 80, b: 200 },
-      { value: 0.42, r: 210, g: 190, b: 130 },
-      { value: 0.7, r: 100, g: 150, b: 60 },
-      { value: 0.85, r: 150, g: 120, b: 90 },
-      { value: 1.0, r: 240, g: 240, b: 245 }
-    ]
-  },
-  heat: {
-    name: 'Heat',
-    type: 'gradient',
-    stops: [
-      { value: 0, r: 0, g: 0, b: 0 },
-      { value: 0.33, r: 255, g: 0, b: 0 },
-      { value: 0.66, r: 255, g: 255, b: 0 },
-      { value: 1, r: 255, g: 255, b: 255 }
-    ]
-  },
-  ice: {
-    name: 'Ice',
-    type: 'gradient',
-    stops: [
-      { value: 0, r: 20, g: 20, b: 40 },
-      { value: 0.5, r: 100, g: 180, b: 220 },
-      { value: 1, r: 240, g: 240, b: 255 }
-    ]
-  },
-};
-
-// Constants - Noise types loaded from NoiseLib
-const NOISE_TYPES = NoiseLib.types;
-
-// Canvas Setup - Responsive sizing
-const canvasWrap = document.getElementById('canvas-wrap');
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-
-let W = 0;
-let H = 0;
-let imgData;
-let buf;
-
-function resizeCanvas() {
-  if (!canvasWrap) return;
-  
-  const rect = canvasWrap.getBoundingClientRect();
-  W = Math.floor(rect.width);
-  H = Math.floor(rect.height);
-  
-  canvas.width = W;
-  canvas.height = H;
-  
-  // Recreate image data after resize
-  imgData = ctx.createImageData(W, H);
-  buf = imgData.data;
-  
-  // Only render if layers exist
-  if (typeof render === 'function' && layers) {
-    render();
-  }
-}
-
-// Initial canvas setup
-if (canvasWrap) {
-  const rect = canvasWrap.getBoundingClientRect();
-  W = Math.floor(rect.width);
-  H = Math.floor(rect.height);
-  canvas.width = W;
-  canvas.height = H;
-  imgData = ctx.createImageData(W, H);
-  buf = imgData.data;
-}
-
-// Handle window resize with responsive recalculation
-window.addEventListener('resize', () => {
-  resizeCanvas();
-});
-
-// Use ResizeObserver to detect container size changes
-if (window.ResizeObserver && canvasWrap) {
-  const resizeObserver = new ResizeObserver(() => {
-    resizeCanvas();
-  });
-  resizeObserver.observe(canvasWrap);
-}
-
-// Global State
-const gState = {
-  res: 2,
-  color: 'gray',
-  offsetX: 0,
-  offsetY: 0,
-  zoom: 1
-};
-
-let zAuto = 0;
-let zValue = 0;
-let uid = 0;
-let layers = [];
-const customFns = {};
-let dragSrcId = null;
-
-// State tracking for dirty rendering
-let dirtyStateFields = new Set();
-let frameCount = 0;
-let lastFpsTime = performance.now();
-
-// Pan and Zoom
-let isPanning = false;
-let panStartX = 0;
-let panStartY = 0;
-let panStartOffsetX = 0;
-let panStartOffsetY = 0;
-
-// Noise Sampling - Uses NoiseLib
-function sampleNoise(l, x, y, z) {
-  const noiseFn = NoiseLib.getNoiseFunction(l.type);
-  
-  if (customFns[l.type]) {
-    try {
-      const v = +customFns[l.type](x, y, z, l.scale, l.octaves, l.falloff, l.seed, l.weight, l.contrast, l.threshold);
-      return isNaN(v) ? 0 : Math.max(0, Math.min(1, v));
-    } catch (e) {
-      return 0;
-    }
-  }
-  
-  return noiseFn(x, y, z, l.scale, l.octaves, l.falloff, l.seed, l.weight, l.contrast, l.threshold);
-}
-
-
-
-// Colorization - Uses color schemes
-function colorize(n, cm, buf, i) {
-  let r, g, b;
-  const scheme = colorSchemes[cm];
-  
-  if (!scheme) {
-    r = g = b = n * 255;
-  } else if (scheme.type === 'gradient') {
-    // Linear interpolation between stops
-    const stops = scheme.stops;
-    let color = stops[0];
-    for (let j = 0; j < stops.length - 1; j++) {
-      if (n >= stops[j].value && n <= stops[j + 1].value) {
-        const t = (n - stops[j].value) / (stops[j + 1].value - stops[j].value);
-        r = Math.round(stops[j].r + t * (stops[j + 1].r - stops[j].r));
-        g = Math.round(stops[j].g + t * (stops[j + 1].g - stops[j].g));
-        b = Math.round(stops[j].b + t * (stops[j + 1].b - stops[j].b));
-        buf[i] = r;
-        buf[i + 1] = g;
-        buf[i + 2] = b;
-        buf[i + 3] = 255;
-        return;
-      }
-    }
-    // Fallback to last stop
-    color = stops[stops.length - 1];
-    r = color.r;
-    g = color.g;
-    b = color.b;
-  } else if (scheme.type === 'stops') {
-    // Step through stops
-    const stops = scheme.stops;
-    let color = stops[0];
-    for (let j = 0; j < stops.length; j++) {
-      if (n <= stops[j].value) {
-        color = stops[j];
-        break;
-      }
-    }
-    r = color.r;
-    g = color.g;
-    b = color.b;
-  } else {
-    r = g = b = n * 255;
-  }
-  
-  buf[i] = Math.max(0, Math.min(255, r));
-  buf[i + 1] = Math.max(0, Math.min(255, g));
-  buf[i + 2] = Math.max(0, Math.min(255, b));
-  buf[i + 3] = 255;
-}
-
-// Main Render Loop
-function render() {
-  const visLayers = layers.filter(l => l.visible);
-  
-  if (!visLayers.length) {
-    ctx.fillStyle = '#111';
-    ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#444';
-    ctx.font = '13px JetBrains Mono';
-    ctx.textAlign = 'center';
-    ctx.fillText('+ Add a layer to start', W / 2, H / 2);
-    return;
-  }
-  
-  const { res, color: cm, offsetX: gOffsetX, offsetY: gOffsetY, zoom, invert: inv, contour: ctr, warp } = gState;
-  const z = zValue;
-  const nL = visLayers.length;
-
-  for (let y = 0; y < H; y += res) {
-    for (let x = 0; x < W; x += res) {
-      let final = 0;
-      
-      // Pipeline: each layer blends with accumulated result using its own blend mode
-      for (let li = 0; li < nL; li++) {
-        const l = visLayers[li];
-        const blend = l.blend;
-        
-        let nx = (x + gOffsetX) * zoom + l.offsetX;
-        let ny = (y + gOffsetY) * zoom + l.offsetY;
-        let n = sampleNoise(l, nx, ny, z + l.z);
-        n = (n - 0.5) * l.contrast + 0.5 + l.threshold;
-        n = n < 0 ? 0 : n > 1 ? 1 : n;
-        const w = Math.max(0, l.weight);
-        
-        // Apply per-layer blend mode
-        if (li === 0) {
-          final = n * w;
-        } else {
-          if (blend === 'avg') {
-            final = (final + n * w) / 2;
-          } else if (blend === 'add') {
-            final = Math.min(1, final + n * w);
-          } else if (blend === 'mul') {
-            final *= n;
-          } else if (blend === 'max') {
-            final = Math.max(final, n * w);
-          } else if (blend === 'min') {
-            final = Math.min(final, n * w);
-          } else if (blend === 'diff') {
-            final = Math.abs(final - n * w);
-          }
-        }
-      }
-      
-      if (inv) final = 1 - final;
-      if (ctr && Math.abs(final - Math.round(final * 8) / 8) < 0.013) final = 1;
-      
-      const bi = 4 * (y * W + x);
-      colorize(final, cm, buf, bi);
-      
-      if (res > 1) {
-        const rv = buf[bi];
-        const gv = buf[bi + 1];
-        const bv = buf[bi + 2];
-        for (let dy = 0; dy < res && y + dy < H; dy++) {
-          for (let dx = 0; dx < res && x + dx < W; dx++) {
-            if (dx === 0 && dy === 0) continue;
-            const ii = 4 * ((y + dy) * W + (x + dx));
-            buf[ii] = rv;
-            buf[ii + 1] = gv;
-            buf[ii + 2] = bv;
-            buf[ii + 3] = 255;
-          }
-        }
-      }
-    }
-  }
-  
-  ctx.putImageData(imgData, 0, 0);
-  
-  // FPS Counter
-  frameCount++;
-  const now = performance.now();
-  if (now - lastFpsTime > 500) {
-    const fps = Math.round(frameCount / ((now - lastFpsTime) / 1000));
-    const fpsEl = document.getElementById('fps');
-    if (fpsEl) fpsEl.textContent = fps + ' fps';
-    frameCount = 0;
-    lastFpsTime = now;
-  }
-}
-
-// Layer Management
-function mkLayer() {
-  return {
-    id: uid++,
-    type: 'perlin',
-    scale: 60,
-    octaves: 4,
-    falloff: 0.5,
-    seed: 0,
-    weight: 1,
-    contrast: 1,
-    threshold: 0,
-    z: 0,
-    offsetX: 0,
-    offsetY: 0,
-    blend: 'avg',
-    visible: true,
-    collapsed: false
-  };
-}
-
-function buildCard(l, idx) {
-  const allTypes = [...NOISE_TYPES, ...Object.keys(customFns)];
-  const card = document.createElement('div');
-  card.className = 'layer-card';
-  card.dataset.lid = l.id;
-
-  const hdr = document.createElement('div');
-  hdr.className = 'card-header';
-  hdr.innerHTML = `<span class="card-toggle">${l.collapsed ? '▸' : '▾'}</span><span class="drag-handle">⠿</span><span class="card-num">${idx + 1}</span><span class="card-title">Layer ${idx + 1}</span><span class="card-badge" id="badge_${l.id}">${l.type}</span><span class="card-eye${l.visible ? '' : ' hidden-layer'}" id="eye_${l.id}">${l.visible ? '●' : '○'}</span><span class="card-rm">✕</span>`;
-  
-  hdr.querySelector('.card-eye').addEventListener('click', e => {
-    e.stopPropagation();
-    l.visible = !l.visible;
-    const eye = hdr.querySelector('.card-eye');
-    eye.textContent = l.visible ? '●' : '○';
-    if (l.visible) eye.classList.remove('hidden-layer');
-    else eye.classList.add('hidden-layer');
-    render();
-  });
-  
-  hdr.querySelector('.card-rm').addEventListener('click', e => {
-    e.stopPropagation();
-    layers = layers.filter(x => x.id !== l.id);
-    renderLayers();
-  });
-
-  // Collapse / expand toggle
-  const toggle = hdr.querySelector('.card-toggle');
-  if (toggle) {
-    toggle.addEventListener('click', (e) => {
-      e.stopPropagation();
-      l.collapsed = !l.collapsed;
-      card.classList.toggle('collapsed', l.collapsed);
-      // update toggle icon
-      toggle.textContent = l.collapsed ? '▸' : '▾';
-      const bodyEl = card.querySelector('.card-body');
-      if (bodyEl) bodyEl.style.display = l.collapsed ? 'none' : '';
-    });
-  }
-
-  const body = document.createElement('div');
-  body.className = 'card-body';
-
-  const row2 = document.createElement('div');
-  row2.className = 'ctrl2';
-  
-  const tSel = document.createElement('select');
-  allTypes.forEach(t => {
-    const o = document.createElement('option');
-    o.value = t;
-    o.textContent = t;
-    if (t === l.type) o.selected = true;
-    tSel.appendChild(o);
-  });
-  tSel.addEventListener('change', () => {
-    l.type = tSel.value;
-    document.getElementById('badge_' + l.id).textContent = l.type;
-    render();
-  });
-    
-  const bSel = document.createElement('select');
-  ['avg', 'add', 'mul', 'max', 'min', 'diff'].forEach(b => {
-    const o = document.createElement('option');
-    o.value = b;
-    o.textContent = b.charAt(0).toUpperCase() + b.slice(1);
-    if (b === l.blend) o.selected = true;
-    bSel.appendChild(o);
-  });
-  bSel.addEventListener('change', () => {
-    l.blend = bSel.value;
-    render();
-  });
-  
-  row2.appendChild(tSel);
-  row2.appendChild(bSel);
-  body.appendChild(row2);
-
-  const sliders = [
-    ['Scale', 4, 400, 1, l.scale, v => l.scale = v],
-    ['Octaves', 1, 8, 1, l.octaves, v => l.octaves = v],
-    ['Falloff', 0.1, 0.9, 0.05, l.falloff, v => l.falloff = v],
-    ['Seed', 0, 9999, 1, l.seed, v => l.seed = v],
-    ['Weight', 0, 2, 0.05, l.weight, v => l.weight = v],
-    ['Contrast', 0.2, 4, 0.05, l.contrast, v => l.contrast = v],
-    ['Threshold', -0.5, 0.5, 0.01, l.threshold, v => l.threshold = v],
-    ['Z', -5, 5, 0.01, l.z, v => l.z = v],
-  ];
-  
-  sliders.forEach(([lbl, mn, mx, st, val, cb]) => {
-    const d = document.createElement('div');
-    d.className = 'ctrl';
-    const prec = st < 0.01 ? 3 : st < 0.1 ? 2 : st < 1 ? 2 : 0;
-    d.innerHTML = `<label>${lbl}</label><input type="range" min="${mn}" max="${mx}" step="${st}" value="${val}"><input type="number" class="param-number" min="${mn}" max="${mx}" step="${st}" value="${parseFloat(val).toFixed(prec)}" style="width:50px;padding:4px;margin-left:4px">`;
-    
-    const inp = d.querySelector('input[type=range]');
-    const numInp = d.querySelector('input[type=number]');
-    inp.addEventListener('input', () => {
-      const v = parseFloat(inp.value);
-      numInp.value = v.toFixed(prec);
-      cb(v);
-      render();
-    });
-    numInp.addEventListener('input', () => {
-      const v = parseFloat(numInp.value) || 0;
-      inp.value = v;
-      cb(v);
-      render();
-    });
-    body.appendChild(d);
-  });
-  
-  // Offset controls with draggable number inputs
-  ['X', 'Y'].forEach(axis => {
-    const offsetVal = axis === 'X' ? l.offsetX : l.offsetY;
-    const d = document.createElement('div');
-    d.className = 'ctrl';
-    d.innerHTML = `<label>Offset ${axis}</label><input type="number" value="${offsetVal.toFixed(0)}" style="flex:1;padding:5px"><span class="val" style="min-width:0"></span>`;
-    
-    const inp = d.querySelector('input');
-    let dragStart = 0;
-    let isDragging = false;
-    const setter = axis === 'X' ? (v => l.offsetX = v) : (v => l.offsetY = v);
-    
-    inp.addEventListener('input', () => {
-      const v = parseFloat(inp.value) || 0;
-      setter(v);
-      render();
-    });
-    
-    inp.addEventListener('mousedown', (e) => {
-      isDragging = true;
-      dragStart = e.clientY;
-      inp.style.cursor = 'ns-resize';
-    });
-    
-    document.addEventListener('mousemove', (e) => {
-      if (isDragging && d.contains(inp) && document.activeElement === inp) {
-        const delta = dragStart - e.clientY;
-        const newVal = (parseFloat(inp.value) || 0) + delta * 0.5;
-        inp.value = newVal.toFixed(0);
-        setter(newVal);
-        dragStart = e.clientY;
-        render();
-      }
-    });
-    
-    document.addEventListener('mouseup', () => {
-      isDragging = false;
-      inp.style.cursor = 'default';
-    });
-    
-    body.appendChild(d);
-  });
-
-  card.appendChild(hdr);
-  card.appendChild(body);
-
-  if (l.collapsed) {
-    body.style.display = 'none';
-    card.classList.add('collapsed');
-  }
-
-  hdr.addEventListener('dragstart', e => {
-    dragSrcId = l.id;
-    setTimeout(() => card.classList.add('dragging'), 0);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', l.id);
-  });
-  
-  hdr.addEventListener('dragend', () => {
-    card.classList.remove('dragging');
-    document.querySelectorAll('.layer-card.drag-over').forEach(c => c.classList.remove('drag-over'));
-  });
-  
-  card.addEventListener('dragover', e => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragSrcId !== l.id) card.classList.add('drag-over');
-  });
-  
-  card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
-  
-  card.addEventListener('drop', e => {
-    e.preventDefault();
-    card.classList.remove('drag-over');
-    if (dragSrcId === l.id) return;
-    const fi = layers.findIndex(x => x.id === dragSrcId);
-    const ti = layers.findIndex(x => x.id === l.id);
-    if (fi < 0 || ti < 0) return;
-    const [m] = layers.splice(fi, 1);
-    layers.splice(ti, 0, m);
-    renderLayers();
-  });
-  
-  hdr.draggable = true;
-  return card;
-}
-
-function renderLayers() {
-  const list = document.getElementById('layers-list');
-  list.innerHTML = '';
-  layers.forEach((l, idx) => list.appendChild(buildCard(l, idx)));
-  render();
-}
-
-function addLayer(l) {
-  layers.push(l || mkLayer());
-  renderLayers();
-}
-
-// Custom Noise Injection
-function injectCustom() {
-  const src = document.getElementById('custom-src').value.trim();
-  const msg = document.getElementById('inject-msg');
-  msg.textContent = '';
-  msg.className = 'msg';
-  
-  try {
-    const fn = new Function('return (' + src + ')')();
-    if (typeof fn !== 'function') throw new Error('Not a function');
-    
-    const m = src.match(/function\s+(\w+)/);
-    const name = m ? m[1] : 'custom_' + Object.keys(customFns).length;
-    customFns[name] = fn;
-    
-    const l = mkLayer();
-    l.type = name;
-    addLayer(l);
-    
-    msg.textContent = name + ' injected! Available params: x, y, z, sc, octaves, falloff, seed, weight, contrast, threshold';
-    msg.className = 'msg ok';
-  } catch (e) {
-    msg.textContent = 'Error: ' + e.message + ' (check function signature)';
-    msg.className = 'msg err';
-  }
-}
-
-// ============================================================================
-// EXPORT FUNCTIONS WITH BUNDLED NOISE-LIB
-// ============================================================================
-
-/**
- * Export as JavaScript with bundled NoiseLib
- */
-function exportAsJS() {
-  const projectName = currentProjectName || 'NoiseGenerator';
-  const sanitizedName = projectName.replace(/[^a-zA-Z0-9_]/g, '_');
-  
-  // Build custom function definitions
-  let customFunctionsCode = '';
-  let customFunctionsRegistry = '';
-  for (const name in customFns) {
-    customFunctionsCode += '\n  /**\n   * Custom injected function: ' + name + '\n   */\n  ' + customFns[name].toString() + '\n';
-    customFunctionsRegistry += "    '" + name + "': " + name + ',\n';
-  }
-  
-  // Get noise-lib source code from the noise-lib.js file
-  let noiseLiBSource = '';
-  
-  // Fetch noise-lib.js synchronously for export
-  const xhr = new XMLHttpRequest();
-  xhr.open('GET', 'noise-lib.js', false);
-  try {
-    xhr.send();
-    if (xhr.status === 200) {
-      noiseLiBSource = xhr.responseText;
-    } else {
-      console.warn('Could not load noise-lib.js, using fallback');
-      noiseLiBSource = '// ERROR: Could not load noise-lib.js';
-    }
-  } catch (e) {
-    console.error('Error loading noise-lib.js:', e);
-    noiseLiBSource = '// ERROR: ' + e.message;
-  }
-  
-  const exportCode = `/*! ${projectName} - Optimized Noise Generator */
-/* Built with bundled NoiseLib - Automatically loaded from noise-lib.js */
-
-${noiseLiBSource}
-
-// ============================================================================
-// CUSTOM INJECTED FUNCTIONS
-// ============================================================================
-${customFunctionsCode}
-
-// ============================================================================
-// CONFIGURATION & RENDERING ENGINE
-// ============================================================================
-
-const ${sanitizedName} = (function() {
-  const globalState = ${JSON.stringify(gState)};
-  const layers = ${JSON.stringify(layers)};
-  
-  // Add custom functions to NoiseLib
-  const customFunctions = {
-${customFunctionsRegistry}
-  };
-  
-  function sampleNoise(layer, x, y, z) {
-    // Check custom functions first
-    if (customFunctions[layer.type] && typeof customFunctions[layer.type] === 'function') {
-      try {
-        const v = customFunctions[layer.type](x, y, z, layer.scale, layer.octaves, layer.falloff, layer.seed, layer.weight, layer.contrast, layer.threshold);
-        return isNaN(v) ? 0 : Math.max(0, Math.min(1, v));
-      } catch (e) {
-        console.error('Error in custom function ' + layer.type + ':', e);
-        return 0;
-      }
-    }
-    
-    // Fall back to NoiseLib functions
-    const noiseFn = NoiseLib.getNoiseFunction(layer.type);
-    return noiseFn(x, y, z, layer.scale, layer.octaves, layer.falloff, layer.seed, layer.weight, layer.contrast, layer.threshold);
-  }
-  
-  function getValue(x, y, z = 0) {
-    const visLayers = layers.filter(layer => layer.visible);
-    if (!visLayers.length) return 0.5;
-    
-    let final = 0;
-    for (let li = 0; li < visLayers.length; li++) {
-      const layer = visLayers[li];
-      let nx = (x + globalState.offsetX) * globalState.zoom + layer.offsetX;
-      let ny = (y + globalState.offsetY) * globalState.zoom + layer.offsetY;
-      
-      let n = sampleNoise(layer, nx, ny, z + layer.z);
-      n = (n - 0.5) * layer.contrast + 0.5 + layer.threshold;
-      n = n < 0 ? 0 : n > 1 ? 1 : n;
-      const w = Math.max(0, layer.weight);
-      
-      if (li === 0) {
-        final = n * w;
-      } else {
-        const blend = layer.blend;
-        if (blend === 'avg') {
-          final = (final + n * w) / 2;
-        } else if (blend === 'add') {
-          final = Math.min(1, final + n * w);
-        } else if (blend === 'mul') {
-          final *= n;
-        } else if (blend === 'max') {
-          final = Math.max(final, n * w);
-        } else if (blend === 'min') {
-          final = Math.min(final, n * w);
-        } else if (blend === 'diff') {
-          final = Math.abs(final - n * w);
-        }
-      }
-    }
-    
-    if (globalState.invert) final = 1 - final;
-    return final;
-  }
-  
-  return {
-    getValue,
-    getState: () => ({...globalState}),
-    getLayers: () => [...layers],
-    NoiseLib,
-    customFunctions,
-    projectName: '${projectName}'
-  };
-})();
-
-// Ensure the module is accessible on window
-if (typeof window !== 'undefined') {
-  window['${sanitizedName}'] = ${sanitizedName};
-}
-
-// Usage: ${sanitizedName}.getValue(x, y) or ${sanitizedName}.getValue(x, y, z)`;
-
-  const blob = new Blob([exportCode], { type: 'text/javascript' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = sanitizedName + '.js';
-  a.click();
-  URL.revokeObjectURL(url);
-  
-  document.getElementById('export-msg').textContent = 'Downloaded: ' + sanitizedName + '.js (with bundled NoiseLib)';
-  document.getElementById('export-msg').className = 'msg ok';
-}
 
 // ============================================================================
 // COLOR SCHEME MANAGEMENT
@@ -1337,7 +644,7 @@ function loadNoiseConfiguration(jsonString, modal, msgEl) {
       });
     }
     
-    layers = data.layers.map(l => ({...l, id: uid++}));
+    layers = data.layers.map(l => normalizeLayer({ ...l, id: uid++ }));
     
     document.getElementById('g-color').value = gState.color;
     document.getElementById('g-res').value = gState.res;
@@ -1377,7 +684,6 @@ const zoomSlider = document.getElementById('g-zoom');
 if (zoomSlider) {
   zoomSlider.addEventListener('input', e => {
     gState.zoom = parseFloat(e.target.value);
-    dirtyStateFields.add('zoom');
     document.getElementById('zoom-val').textContent = gState.zoom.toFixed(1) + 'x';
     render();
   });
@@ -1447,9 +753,23 @@ document.addEventListener('mouseup', () => {
 // Event Listeners - Buttons
 document.getElementById('add-btn').addEventListener('click', () => addLayer());
 document.getElementById('inject-btn').addEventListener('click', injectCustom);
-document.getElementById('example-btn').addEventListener('click', () => {
-  document.getElementById('custom-src').value = EXAMPLES[Math.floor(Math.random() * EXAMPLES.length)];
-});
+let exampleIndex = 0;
+const examplePrevBtn = document.getElementById('example-prev');
+const exampleNextBtn = document.getElementById('example-next');
+
+const setExample = (idx) => {
+  if (!EXAMPLES.length) return;
+  exampleIndex = (idx + EXAMPLES.length) % EXAMPLES.length;
+  const src = document.getElementById('custom-src');
+  if (src) src.value = EXAMPLES[exampleIndex];
+};
+
+if (examplePrevBtn) {
+  examplePrevBtn.addEventListener('click', () => setExample(exampleIndex - 1));
+}
+if (exampleNextBtn) {
+  exampleNextBtn.addEventListener('click', () => setExample(exampleIndex + 1));
+}
 document.getElementById('edit-color-btn').addEventListener('click', editColorScheme);
 document.getElementById('export-color-btn').addEventListener('click', openColorExportModal);
 document.getElementById('edit-color-schemes-btn').addEventListener('click', editColorScheme);
@@ -1499,6 +819,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Canvas Pan and Zoom
+let isPanning = false;
+let panStartX = 0;
+let panStartY = 0;
+let panStartOffsetX = 0;
+let panStartOffsetY = 0;
+
 canvas.addEventListener('mousedown', (e) => {
   if (e.button === 0) {
     isPanning = true;
@@ -1620,6 +946,7 @@ if (colorSchemesModal) {
 
 // Menu Bar Functionality
 let currentProjectName = 'Untitled Project';
+window.currentProjectName = currentProjectName;
 const projectNameDisplay = document.getElementById('project-name-display');
 const projectNameInput = document.getElementById('project-name-input');
 
@@ -1633,6 +960,7 @@ projectNameDisplay.addEventListener('click', () => {
 
 projectNameInput.addEventListener('blur', () => {
   currentProjectName = projectNameInput.value || 'Untitled Project';
+  window.currentProjectName = currentProjectName;
   projectNameDisplay.textContent = currentProjectName;
   projectNameDisplay.style.display = 'inline-block';
   projectNameInput.style.display = 'none';
@@ -1653,6 +981,7 @@ document.getElementById('menu-new').addEventListener('click', () => {
     const projectName = prompt('Enter project name:', 'My Project');
     if (projectName) {
       currentProjectName = projectName;
+      window.currentProjectName = currentProjectName;
       projectNameDisplay.textContent = currentProjectName;
       // Reset all layers and state
       layers = [];
@@ -1672,8 +1001,11 @@ document.getElementById('menu-new').addEventListener('click', () => {
       document.getElementById('g-color').value = 'gray';
       document.getElementById('g-res').value = 2;
       // Clear canvas
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, W, H);
+      const ctxRef = window.NM?.ctx;
+      if (ctxRef && window.NM?.canvas) {
+        ctxRef.fillStyle = '#000000';
+        ctxRef.fillRect(0, 0, window.NM.canvas.width, window.NM.canvas.height);
+      }
       // Render and add first layer
       renderLayers();
       addLayer();
