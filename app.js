@@ -819,6 +819,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Canvas Pan and Zoom
+let isPanning = false;
+let panStartX = 0;
+let panStartY = 0;
+let panStartOffsetX = 0;
+let panStartOffsetY = 0;
+
 canvas.addEventListener('mousedown', (e) => {
   if (e.button === 0) {
     isPanning = true;
@@ -940,6 +946,7 @@ if (colorSchemesModal) {
 
 // Menu Bar Functionality
 let currentProjectName = 'Untitled Project';
+window.currentProjectName = currentProjectName;
 const projectNameDisplay = document.getElementById('project-name-display');
 const projectNameInput = document.getElementById('project-name-input');
 
@@ -953,6 +960,7 @@ projectNameDisplay.addEventListener('click', () => {
 
 projectNameInput.addEventListener('blur', () => {
   currentProjectName = projectNameInput.value || 'Untitled Project';
+  window.currentProjectName = currentProjectName;
   projectNameDisplay.textContent = currentProjectName;
   projectNameDisplay.style.display = 'inline-block';
   projectNameInput.style.display = 'none';
@@ -973,6 +981,7 @@ document.getElementById('menu-new').addEventListener('click', () => {
     const projectName = prompt('Enter project name:', 'My Project');
     if (projectName) {
       currentProjectName = projectName;
+      window.currentProjectName = currentProjectName;
       projectNameDisplay.textContent = currentProjectName;
       // Reset all layers and state
       layers = [];

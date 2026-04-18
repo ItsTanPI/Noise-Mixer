@@ -1,7 +1,7 @@
 // Project Management Module - Save and Load Projects with all data
 
 function saveProject() {
-  const projectName = currentProjectName || 'Untitled Project';
+  const projectName = window.currentProjectName || 'Untitled Project';
   const exportData = {
     version: '1.0',
     timestamp: new Date().toISOString(),
@@ -38,8 +38,9 @@ function loadProject(jsonString) {
 
       // Restore project name
       if (data.projectName) {
-        currentProjectName = data.projectName;
-        document.getElementById('project-name-display').textContent = currentProjectName;
+        window.currentProjectName = data.projectName;
+        const display = document.getElementById('project-name-display');
+        if (display) display.textContent = window.currentProjectName;
       }
 
       // Restore global state

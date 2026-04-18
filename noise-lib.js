@@ -198,91 +198,60 @@ const NoiseLib = (function() {
 // ============================================================================
 
 /**
- * Internal Helper: Hash function to get a "random" 3D point for a cell
- * Returns [x, y, z] offsets between 0 and 1
+ * Internal Helper: Hash function to get a "random" 2D point for a cell
+ * Returns [x, y] offsets between 0 and 1
  */
-function _getHashPoint3D(cx, cy, cz, seed, angle = 0) {
-  const h1 = Math.sin(cx * 127.1 + cy * 311.7 + cz * 74.9 + seed * 41.3) * 43758.5453;
-  const h2 = Math.sin(cx * 269.5 + cy * 183.3 + cz * 246.1 + seed * 41.3) * 43758.5453;
-  const h3 = Math.sin(cx * 419.2 + cy * 371.9 + cz * 156.7 + seed * 41.3) * 43758.5453;
-
+function _getHashPoint(cx, cy, seed, angle = 0) {
+  const h1 = Math.sin(cx * 127.1 + cy * 311.7 + seed * 41.3) * 43758.5453;
+  const h2 = Math.sin(cx * 269.5 + cy * 183.3 + seed * 41.3) * 43758.5453;
   let px = h1 - Math.floor(h1);
   let py = h2 - Math.floor(h2);
-  let pz = h3 - Math.floor(h3);
 
-  const angleRad = (angle * Math.PI) / 180;
-  const t = Math.min(1, Math.abs(angle) / 180);
-  px = 0.5 + (px - 0.5) * t;
-  py = 0.5 + (py - 0.5) * t;
-  pz = 0.5 + (pz - 0.5) * t;
+  const r = _rotate2D(px - 0.5, py - 0.5, angle);
+  px = r.x + 0.5;
+  py = r.y + 0.5;
 
-  if (angleRad !== 0) {
-    const r = _rotate3D(px - 0.5, py - 0.5, pz - 0.5, angleRad);
-    px = r.x + 0.5;
-    py = r.y + 0.5;
-    pz = r.z + 0.5;
-  }
-
-  return [px, py, pz];
+  return [px, py];
 }
 
 /**
- * Core Cellular Calculation (3D)
+ * Core Cellular Calculation
  * Returns { d1: closest, d2: second_closest }
  */
-function _calculateCellular3D(x, y, z, scale, seed, angleMax = 0) {
-  const sx = x / scale;
-  const sy = y / scale;
-  const sz = z / scale;
+function _calculateCellular(x, y, scale, seed, angleMax = 0) {
+  const cx = Math.floor(x / scale);
+  const cy = Math.floor(y / scale);
+  const lx = x / scale - cx; // Local x (0 to 1)
+  const ly = y / scale - cy; // Local y (0 to 1)
 
-  const cx = Math.floor(sx);
-  const cy = Math.floor(sy);
-  const cz = Math.floor(sz);
-
-  const lx = sx - cx;
-  const ly = sy - cy;
-  const lz = sz - cz;
-
-  let d1 = 999.0;
-  let d2 = 999.0;
-  let c1x = cx, c1y = cy, c1z = cz;
+  let d1 = 2.0; // F1
+  let d2 = 2.0; // F2
+  let c1x = cx;
+  let c1y = cy;
 
   for (let i = -1; i <= 1; i++) {
     for (let j = -1; j <= 1; j++) {
-      for (let k = -1; k <= 1; k++) {
-        const ncx = cx + i;
-        const ncy = cy + j;
-        const ncz = cz + k;
+      const ncx = cx + i;
+      const ncy = cy + j;
+      const point = _getHashPoint(ncx, ncy, seed, angleMax);
+      
+      // Calculate distance from local position to the neighbor's point
+      // We add the neighbor offset (i, j) to the random point position
+      const dx = i + point[0] - lx;
+      const dy = j + point[1] - ly;
+      const dist = Math.sqrt(dx * dx + dy * dy);
 
-        const point = _getHashPoint3D(ncx, ncy, ncz, seed, angleMax);
-
-        const dx = (i + point[0]) - lx;
-        const dy = (j + point[1]) - ly;
-        const dz = (k + point[2]) - lz;
-
-        // Squared first, sqrt only when needed
-        const distSq = dx*dx + dy*dy + dz*dz;
-
-        if (distSq < d1) {
-          d2 = d1;           // old closest becomes second
-          d1 = distSq;
-          c1x = ncx;
-          c1y = ncy;
-          c1z = ncz;
-        } else if (distSq < d2) {
-          d2 = distSq;
-        }
+      if (dist < d1) {
+        d2 = d1;
+        d1 = dist;
+        c1x = ncx;
+        c1y = ncy;
+      } else if (dist < d2) {
+        d2 = dist;
       }
     }
   }
-
-  return {
-    d1: Math.sqrt(d1),
-    d2: Math.sqrt(d2),
-    cx: c1x,
-    cy: c1y,
-    cz: c1z
-  };
+  return { d1, d2, cx: c1x, cy: c1y };
 }
 
 /**
@@ -297,26 +266,16 @@ function _rotate2D(x, y, angleDeg) {
 }
 
 /**
- * Rotate 3D point around Z axis (radians)
- */
-function _rotate3D(x, y, z, angleRad) {
-  if (!angleRad) return { x, y, z };
-  const c = Math.cos(angleRad);
-  const s = Math.sin(angleRad);
-  return { x: x * c - y * s, y: x * s + y * c, z };
-}
-
-/**
  * Voronoi - Standard cell centers
  */
-  function voronoiRaw(x, y, z, seed, scale, angle) {
-    const res = _calculateCellular3D(x, y, z, scale, seed, angle);
+  function voronoiRaw(x, y, seed, scale, angle) {
+    const res = _calculateCellular(x, y, scale, seed, angle);
     return Math.min(1, res.d1);
   }
 
   function voronoi(x, y, z, seed, params = { scale: 60, angle: 0, contrast: 1, threshold: 0 }) {
     const { scale = 60, angle = 0 } = params;
-    const n = voronoiRaw(x, y, z, seed, scale, angle);
+    const n = voronoiRaw(x, y, seed, scale, angle);
     return applyPost(n, params);
   }
 
@@ -331,7 +290,7 @@ function _rotate3D(x, y, z, angleRad) {
     let currentScale = scale;
 
     for (let i = 0; i < octaves; i++) {
-      n += voronoiRaw(x, y, z, seed + i, currentScale, angle) * amp;
+      n += voronoiRaw(x, y, seed + i, currentScale, angle) * amp;
       maxAmp += amp;
       amp *= falloff;
       currentScale *= 0.5;
@@ -351,7 +310,7 @@ function _rotate3D(x, y, z, angleRad) {
  */
   function voronoiCracks(x, y, z, seed, params = { scale: 60, angle: 0, contrast: 1, threshold: 0 }) {
     const { scale = 60, angle = 0 } = params;
-    const res = _calculateCellular3D(x, y, z, scale, seed, angle);
+    const res = _calculateCellular(x, y, scale, seed, angle);
     // The closer F2 and F1 are, the closer we are to a boundary
     const diff = res.d2 - res.d1;
     const n = Math.min(1, diff * 2.0); // Multiply by 2 to sharpen the cracks
@@ -363,7 +322,7 @@ function _rotate3D(x, y, z, angleRad) {
  */
   function voronoiEdge(x, y, z, seed, params = { scale: 60, angle: 0, contrast: 1, threshold: 0 }) {
     const { scale = 60, angle = 0 } = params;
-    const n = 1 - voronoiRaw(x, y, z, seed, scale, angle);
+    const n = 1 - voronoiRaw(x, y, seed, scale, angle);
     return applyPost(n, params);
   }
 
@@ -441,8 +400,8 @@ function _rotate3D(x, y, z, angleRad) {
    */
   function voronoiCell(x, y, z, seed, params = { scale: 60, angle: 0, contrast: 1, threshold: 0 }) {
     const { scale = 60, angle = 0 } = params;
-    const res = _calculateCellular3D(x, y, z, scale, seed, angle);
-    const v = hashFloat(hash(res.cx, res.cy, seed + 9001) ^ hash(res.cz, res.cz, seed + 1337));
+    const res = _calculateCellular(x, y, scale, seed, angle);
+    const v = hashFloat(hash(res.cx, res.cy, seed + 9001));
     return applyPost(v, params);
   }
 

@@ -1,7 +1,10 @@
 // Export module - optimized bundled JS builder
 (() => {
   function exportAsJS() {
-    const projectName = window.currentProjectName || 'NoiseGenerator';
+    const projectName = window.currentProjectName
+      || document.getElementById('project-name-display')?.textContent
+      || document.getElementById('project-name-input')?.value
+      || 'NoiseGenerator';
     const sanitizedName = projectName.replace(/[^a-zA-Z0-9_]/g, '_');
 
     const visLayers = (window.layers || []).filter(l => l.visible);

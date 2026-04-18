@@ -38,6 +38,7 @@ Noise Mixer lets you create complex procedural textures and patterns by combinin
 
 ## Custom Function Boilerplate
 
+
 Use this template when adding a custom noise function:
 
 ```js
