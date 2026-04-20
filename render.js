@@ -5,6 +5,7 @@
   const canvasWrap = document.getElementById('canvas-wrap');
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
+  const hoverEl = document.getElementById('canvas-hover');
 
   let W = 0;
   let H = 0;
@@ -52,6 +53,111 @@
     });
     resizeObserver.observe(canvasWrap);
   }
+
+  function sampleFinalAt(x, y) {
+    const visLayers = window.layers.filter(l => l.visible);
+    if (!visLayers.length) return 0;
+
+    const { offsetX: gOffsetX, offsetY: gOffsetY, zoom, invert: inv, contour: ctr } = NM.gState;
+    const z = window.zValue;
+    let final = 0;
+
+    for (let li = 0; li < visLayers.length; li++) {
+      const l = visLayers[li];
+      const blend = l.blend;
+      NM.ensureLayerParams(l);
+
+      const nx = (x + gOffsetX) * zoom + l.offsetX;
+      const ny = (y + gOffsetY) * zoom + l.offsetY;
+      let n = sampleNoise(l, nx, ny, z + l.z);
+      n = n < 0 ? 0 : n > 1 ? 1 : n;
+
+      if (li === 0) {
+        final = n;
+      } else if (blend === 'avg') {
+        final = (final + n) / 2;
+      } else if (blend === 'add') {
+        final = Math.min(1, final + n);
+      } else if (blend === 'mul') {
+        final *= n;
+      } else if (blend === 'max') {
+        final = Math.max(final, n);
+      } else if (blend === 'min') {
+        final = Math.min(final, n);
+      } else if (blend === 'diff') {
+        final = Math.abs(final - n);
+      }
+    }
+
+    if (inv) final = 1 - final;
+    if (ctr && Math.abs(final - Math.round(final * 8) / 8) < 0.013) final = 1;
+    return final;
+  }
+
+  function bindHover() {
+    if (!canvas || !hoverEl) return;
+
+    let lastHover = null;
+
+    const updateHover = () => {
+      if (!lastHover) return;
+      const x = Math.max(0, Math.min(W - 1, Math.floor(lastHover.x * W)));
+      const y = Math.max(0, Math.min(H - 1, Math.floor(lastHover.y * H)));
+
+      const worldX = (x + NM.gState.offsetX) * NM.gState.zoom;
+      const worldY = (y + NM.gState.offsetY) * NM.gState.zoom;
+      const val = sampleFinalAt(x, y);
+
+      hoverEl.textContent = `x ${worldX.toFixed(2)}  y ${worldY.toFixed(2)}  v ${val.toFixed(4)}`;
+      hoverEl.classList.remove('hidden');
+    };
+
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const sx = (e.clientX - rect.left) / rect.width;
+      const sy = (e.clientY - rect.top) / rect.height;
+      lastHover = { x: sx, y: sy };
+      updateHover();
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      hoverEl.classList.add('hidden');
+      lastHover = null;
+    });
+
+    NM.updateHover = updateHover;
+  }
+
+  bindHover();
+
+  function bindArrowPan() {
+    document.addEventListener('keydown', (e) => {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) return;
+
+      let dx = 0;
+      let dy = 0;
+      if (e.key === 'ArrowLeft') dx = -1;
+      else if (e.key === 'ArrowRight') dx = 1;
+      else if (e.key === 'ArrowUp') dy = -1;
+      else if (e.key === 'ArrowDown') dy = 1;
+      else return;
+
+      e.preventDefault();
+      const step = e.shiftKey ? 20 : e.altKey ? 2 : 8;
+      NM.gState.offsetX += dx * step;
+      NM.gState.offsetY += dy * step;
+
+      const panXInput = document.getElementById('g-panx');
+      const panYInput = document.getElementById('g-pany');
+      if (panXInput) panXInput.value = NM.gState.offsetX.toFixed(1);
+      if (panYInput) panYInput.value = NM.gState.offsetY.toFixed(1);
+
+      requestRender();
+      if (NM.updateHover) NM.updateHover();
+    });
+  }
+
+  bindArrowPan();
 
   function sampleNoise(l, x, y, z) {
     NM.cacheBuiltInDefaults();

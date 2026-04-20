@@ -61,6 +61,7 @@
   <div id="left">
     <div id="canvas-wrap">
       <canvas id="c"></canvas>
+      <div id="canvas-hover" class="canvas-hover hidden"></div>
       <!-- <div id="fps" style="position:absolute;top:8px;left:8px;font-size:12px;color:var(--accent);background:rgba(0,0,0,.6);padding:2px 6px;border-radius:4px;pointer-events:none">-- fps</div> -->
     </div>
   </div>
@@ -222,16 +223,16 @@
             <select id="render-color"></select>
           </div>
           <div class="render-field">
-            <label>Zoom</label>
-            <input type="number" id="render-zoom" min="0.1" step="0.1">
-          </div>
-          <div class="render-field">
             <label>Pan X</label>
             <input type="number" id="render-panx" step="0.1">
           </div>
           <div class="render-field">
             <label>Pan Y</label>
             <input type="number" id="render-pany" step="0.1">
+          </div>
+          <div class="render-field">
+            <label>Zoom</label>
+            <input type="number" id="render-zoom" min="0.1" step="0.1">
           </div>
         </div>
 
