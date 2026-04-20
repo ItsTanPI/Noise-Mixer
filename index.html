@@ -20,7 +20,14 @@
       <div class="menu-option" id="menu-new">New</div>
       <div class="menu-option" id="menu-save">Save</div>
       <div class="menu-option" id="menu-load">Load</div>
+    </div>
+  </div>
+
+  <div class="menu-item">
+    <div class="menu-title">Export</div>
+    <div class="menu-dropdown">
       <div class="menu-option" id="menu-build">Build</div>
+      <div class="menu-option" id="menu-render">Render</div>
     </div>
   </div>
   
@@ -54,6 +61,7 @@
   <div id="left">
     <div id="canvas-wrap">
       <canvas id="c"></canvas>
+      <div id="canvas-hover" class="canvas-hover hidden"></div>
       <!-- <div id="fps" style="position:absolute;top:8px;left:8px;font-size:12px;color:var(--accent);background:rgba(0,0,0,.6);padding:2px 6px;border-radius:4px;pointer-events:none">-- fps</div> -->
     </div>
   </div>
@@ -188,6 +196,59 @@
         <div class="about-section">
           <h3>Acknowledgments</h3>
           <p>This project was developed with assistance from AI Coding.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Render Modal -->
+  <div id="render-modal" class="modal hidden">
+    <div class="modal-content" style="max-width:520px">
+      <div class="modal-header">
+        <h2>Render Image</h2>
+        <button class="modal-close" id="render-close">&times;</button>
+      </div>
+      <div class="modal-body" style="gap:12px">
+        <div class="render-grid">
+          <div class="render-field">
+            <label>Width</label>
+            <input type="number" id="render-width" min="16" step="1">
+          </div>
+          <div class="render-field">
+            <label>Height</label>
+            <input type="number" id="render-height" min="16" step="1">
+          </div>
+          <div class="render-field render-span">
+            <label>Color Scheme</label>
+            <select id="render-color"></select>
+          </div>
+          <div class="render-field">
+            <label>Pan X</label>
+            <input type="number" id="render-panx" step="0.1">
+          </div>
+          <div class="render-field">
+            <label>Pan Y</label>
+            <input type="number" id="render-pany" step="0.1">
+          </div>
+          <div class="render-field">
+            <label>Zoom</label>
+            <input type="number" id="render-zoom" min="0.1" step="0.1">
+          </div>
+        </div>
+
+        <div class="render-progress">
+          <div class="render-progress-bar" id="render-progress-bar" style="width:0%"></div>
+        </div>
+        <div class="render-stats">
+          <span id="render-percent">0%</span>
+          <span id="render-eta">ETA --:--</span>
+        </div>
+        <div class="msg" id="render-msg"></div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button id="render-pause" disabled>Pause</button>
+          <button id="render-cancel">Cancel</button>
+          <button id="render-run">Render</button>
         </div>
       </div>
     </div>
@@ -355,6 +416,7 @@
 <script src="render.js"></script>
 <script src="ui-layers.js"></script>
 <script src="export.js"></script>
+<script src="render-export.js"></script>
 <script src="project.js"></script>
 <script src="colorSchemes.js"></script>
 <script src="app.js"></script>

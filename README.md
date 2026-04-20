@@ -36,6 +36,8 @@ Noise Mixer lets you create complex procedural textures and patterns by combinin
 5. **Explore** - Use mouse to pan, scroll to zoom, and mouse wheel on number inputs
 6. **Export** - Save your creation for use elsewhere
 
+
+
 ## Custom Function Boilerplate
 
 
@@ -423,3 +425,13 @@ Once injected, your function:
 ### Theme Toggle
 - Click the **moon/sun icon** in the top-right to toggle dark/light mode
 - Your preference is automatically saved
+
+## Running the Project
+
+To run the project locally, use the following command:
+
+```bash
+npx live-server --port=8000 --watch=.
+```
+
+This will start a development server on `http://localhost:8000` and automatically reload the browser when changes are made.
