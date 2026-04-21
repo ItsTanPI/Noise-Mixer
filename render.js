@@ -74,18 +74,8 @@
 
       if (li === 0) {
         final = n;
-      } else if (blend === 'avg') {
-        final = (final + n) / 2;
-      } else if (blend === 'add') {
-        final = Math.min(1, final + n);
-      } else if (blend === 'mul') {
-        final *= n;
-      } else if (blend === 'max') {
-        final = Math.max(final, n);
-      } else if (blend === 'min') {
-        final = Math.min(final, n);
-      } else if (blend === 'diff') {
-        final = Math.abs(final - n);
+      } else {
+        final = applyBlend(final, n, blend, { layer: l, layerIndex: li, x, y, z });
       }
     }
 
@@ -158,6 +148,29 @@
   }
 
   bindArrowPan();
+
+  const clamp01 = (v) => {
+    if (!Number.isFinite(v)) return 0;
+    return v < 0 ? 0 : v > 1 ? 1 : v;
+  };
+
+  function applyBlend(base, layerValue, blend, ctx) {
+    const customBlend = NM.customBlends && NM.customBlends[blend];
+    if (customBlend) {
+      try {
+        return clamp01(+customBlend(base, layerValue, ctx));
+      } catch (e) {
+        return base;
+      }
+    }
+    if (blend === 'avg') return (base + layerValue) / 2;
+    if (blend === 'add') return clamp01(base + layerValue);
+    if (blend === 'mul') return base * layerValue;
+    if (blend === 'max') return Math.max(base, layerValue);
+    if (blend === 'min') return Math.min(base, layerValue);
+    if (blend === 'diff') return Math.abs(base - layerValue);
+    return base;
+  }
 
   function sampleNoise(l, x, y, z) {
     NM.cacheBuiltInDefaults();
@@ -264,19 +277,7 @@
           if (li === 0) {
             final = n * w;
           } else {
-            if (blend === 'avg') {
-              final = (final + n * w) / 2;
-            } else if (blend === 'add') {
-              final = Math.min(1, final + n * w);
-            } else if (blend === 'mul') {
-              final *= n;
-            } else if (blend === 'max') {
-              final = Math.max(final, n * w);
-            } else if (blend === 'min') {
-              final = Math.min(final, n * w);
-            } else if (blend === 'diff') {
-              final = Math.abs(final - n * w);
-            }
+            final = applyBlend(final, n * w, blend, { layer: l, layerIndex: li, x, y, z });
           }
         }
 

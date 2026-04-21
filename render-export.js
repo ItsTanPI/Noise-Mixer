@@ -156,6 +156,28 @@
     return fn(x, y, z, layer.seed, params);
   }
 
+  const clamp01 = (v) => {
+    if (!Number.isFinite(v)) return 0;
+    return v < 0 ? 0 : v > 1 ? 1 : v;
+  };
+
+  function applyBlend(base, layerValue, blend, customBlend, ctx) {
+    if (customBlend) {
+      try {
+        return clamp01(+customBlend(base, layerValue, ctx));
+      } catch (e) {
+        return base;
+      }
+    }
+    if (blend === 'avg') return (base + layerValue) / 2;
+    if (blend === 'add') return clamp01(base + layerValue);
+    if (blend === 'mul') return base * layerValue;
+    if (blend === 'max') return Math.max(base, layerValue);
+    if (blend === 'min') return Math.min(base, layerValue);
+    if (blend === 'diff') return Math.abs(base - layerValue);
+    return base;
+  }
+
   function formatEta(seconds) {
     if (!Number.isFinite(seconds) || seconds <= 0) return 'ETA --:--';
     if (seconds < 60) return 'ETA ' + seconds.toFixed(1) + 's';
@@ -197,12 +219,14 @@
     const layerData = visLayers.map(l => {
       const params = window.NM?.ensureLayerParams?.(l) || l.params || {};
       const customFn = window.NM?.customFns?.[l.type];
+      const customBlend = window.NM?.customBlends?.[l.blend];
       const fn = customFn ? null : NoiseLib.getNoiseFunction(l.type);
       return {
         layer: l,
         params,
         fn,
         customFn,
+        blendFn: customBlend || null,
         blend: l.blend,
         offsetX: l.offsetX,
         offsetY: l.offsetY,
@@ -283,18 +307,8 @@
 
             if (li === 0) {
               final = n;
-            } else if (ld.blend === 'avg') {
-              final = (final + n) / 2;
-            } else if (ld.blend === 'add') {
-              final = Math.min(1, final + n);
-            } else if (ld.blend === 'mul') {
-              final *= n;
-            } else if (ld.blend === 'max') {
-              final = Math.max(final, n);
-            } else if (ld.blend === 'min') {
-              final = Math.min(final, n);
-            } else if (ld.blend === 'diff') {
-              final = Math.abs(final - n);
+            } else {
+              final = applyBlend(final, n, ld.blend, ld.blendFn, { layer, layerIndex: li, x, y: renderState.y, z: renderState.zBase + ld.z });
             }
           }
 

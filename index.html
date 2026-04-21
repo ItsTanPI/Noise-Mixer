@@ -113,6 +113,7 @@
     <div class="layer-actions" style="display:flex;gap:8px;align-items:center;margin-top:8px">
       <button class="add-layer-btn" id="add-btn">+ Add layer</button>
       <button class="add-layer-btn" id="custom-noise-btn">Custom Noise</button>
+      <button class="add-layer-btn" id="custom-blend-btn">Custom Blend</button>
     </div>
   </div>
 
@@ -286,6 +287,34 @@
             <button id="inject-btn" style="padding:6px 12px;border:none;background:var(--accent);color:white;border-radius:4px;cursor:pointer">Inject &amp; add</button>
           </div>
           <div id="inject-msg" class="msg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Blend Injection Modal -->
+  <div id="custom-blend-modal" class="modal hidden">
+    <div class="modal-content" style="max-width:700px">
+      <div class="modal-header">
+        <h2>Custom Blend Injection</h2>
+        <button class="modal-close" id="custom-blend-close">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="hint"><strong>Parameters:</strong> <code>base, layer, ctx</code></div>
+          <div class="hint"><strong>Returns:</strong> number <code>0 to 1</code></div>
+          <div class="hint"><strong>ctx:</strong> { layer, layerIndex, x, y, z }</div>
+          <label style="font-weight:bold;color:var(--text);display:block;margin-bottom:6px">Function Code:</label>
+          <textarea id="custom-blend-src" style="width:100%;height:200px;padding:8px;border:1px solid var(--border2);border-radius:4px;font-family:monospace;font-size:12px;background:var(--bg2);color:var(--text)">function softLight(base, layer, ctx) {
+  const v = base < 0.5
+    ? (2 * base * layer)
+    : (1 - 2 * (1 - base) * (1 - layer));
+  return v;
+}</textarea>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button id="inject-blend-btn" style="padding:6px 12px;border:none;background:var(--accent);color:white;border-radius:4px;cursor:pointer">Inject Blend</button>
+          </div>
+          <div id="inject-blend-msg" class="msg"></div>
         </div>
       </div>
     </div>

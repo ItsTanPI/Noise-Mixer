@@ -9,8 +9,11 @@
 
     const visLayers = (window.layers || []).filter(l => l.visible);
     const usedCustom = new Set();
+    const builtInBlends = window.NM?.BLEND_MODES || ['avg', 'add', 'mul', 'max', 'min', 'diff'];
+    const usedCustomBlends = new Set();
     visLayers.forEach(l => {
       if (window.customFns && window.customFns[l.type]) usedCustom.add(l.type);
+      if (window.NM?.customBlends?.[l.blend]) usedCustomBlends.add(l.blend);
     });
 
     let customFunctionsCode = '';
@@ -18,6 +21,13 @@
     usedCustom.forEach(name => {
       customFunctionsCode += '\n  /**\n   * Custom injected function: ' + name + '\n   */\n  ' + window.customFns[name].toString() + '\n';
       customFunctionsRegistry += "    '" + name + "': " + name + ',\n';
+    });
+
+    let customBlendsCode = '';
+    let customBlendsRegistry = '';
+    usedCustomBlends.forEach(name => {
+      customBlendsCode += '\n  /**\n   * Custom blend function: ' + name + '\n   */\n  ' + window.NM.customBlends[name].toString() + '\n';
+      customBlendsRegistry += "    '" + name + "': " + name + ',\n';
     });
 
     let noiseLibSource = '';
@@ -62,12 +72,7 @@
       if (idx === 0) {
         layerCode += `\n    final = n${idx};`;
       } else {
-        if (l.blend === 'avg') layerCode += `\n    final = (final + n${idx}) / 2;`;
-        else if (l.blend === 'add') layerCode += `\n    final = Math.min(1, final + n${idx});`;
-        else if (l.blend === 'mul') layerCode += `\n    final *= n${idx};`;
-        else if (l.blend === 'max') layerCode += `\n    final = Math.max(final, n${idx});`;
-        else if (l.blend === 'min') layerCode += `\n    final = Math.min(final, n${idx});`;
-        else if (l.blend === 'diff') layerCode += `\n    final = Math.abs(final - n${idx});`;
+        layerCode += `\n    final = applyBlend(final, n${idx}, '${l.blend}', { layerIndex: ${idx} });`;
       }
     });
 
@@ -82,6 +87,11 @@ ${noiseLibSource}
 ${customFunctionsCode}
 
 // ============================================================================
+// CUSTOM BLEND FUNCTIONS
+// ============================================================================
+${customBlendsCode}
+
+// ============================================================================
 // CONFIGURATION & RENDERING ENGINE (OPTIMIZED)
 // ============================================================================
 
@@ -94,6 +104,28 @@ const ${sanitizedName} = (function() {
   const customFunctions = {
 ${customFunctionsRegistry}
   };
+
+  const blendFns = {
+    avg: (a, b) => (a + b) / 2,
+    add: (a, b) => Math.min(1, a + b),
+    mul: (a, b) => a * b,
+    max: (a, b) => Math.max(a, b),
+    min: (a, b) => Math.min(a, b),
+    diff: (a, b) => Math.abs(a - b),
+${customBlendsRegistry}
+  };
+
+  function clamp01(v) {
+    if (!Number.isFinite(v)) return 0;
+    return v < 0 ? 0 : v > 1 ? 1 : v;
+  }
+
+  function applyBlend(base, layerValue, blend, ctx) {
+    const fn = blendFns[blend];
+    if (!fn) return base;
+    const v = fn(base, layerValue, ctx);
+    return clamp01(+v);
+  }
 
   function getValue(x, y, z = 0) {
     let final = 0;

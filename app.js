@@ -753,6 +753,8 @@ document.addEventListener('mouseup', () => {
 // Event Listeners - Buttons
 document.getElementById('add-btn').addEventListener('click', () => addLayer());
 document.getElementById('inject-btn').addEventListener('click', injectCustom);
+const injectBlendBtn = document.getElementById('inject-blend-btn');
+if (injectBlendBtn) injectBlendBtn.addEventListener('click', injectCustomBlend);
 let exampleIndex = 0;
 const examplePrevBtn = document.getElementById('example-prev');
 const exampleNextBtn = document.getElementById('example-next');
@@ -913,6 +915,31 @@ if (customNoiseModal) {
   customNoiseModal.addEventListener('click', (e) => {
     if (e.target === customNoiseModal) {
       customNoiseModal.classList.add('hidden');
+    }
+  });
+}
+
+// Custom Blend Modal
+const customBlendBtn = document.getElementById('custom-blend-btn');
+const customBlendModal = document.getElementById('custom-blend-modal');
+const customBlendClose = document.getElementById('custom-blend-close');
+
+if (customBlendBtn) {
+  customBlendBtn.addEventListener('click', () => {
+    customBlendModal.classList.remove('hidden');
+  });
+}
+
+if (customBlendClose) {
+  customBlendClose.addEventListener('click', () => {
+    customBlendModal.classList.add('hidden');
+  });
+}
+
+if (customBlendModal) {
+  customBlendModal.addEventListener('click', (e) => {
+    if (e.target === customBlendModal) {
+      customBlendModal.classList.add('hidden');
     }
   });
 }
