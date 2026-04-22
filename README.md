@@ -59,6 +59,29 @@ Notes:
 - **Name matters**: injecting a function with the same name will overwrite the existing custom function.
 - **Return range**: always return a value between 0 and 1.
 
+## Custom Blend Functions
+
+You can add your own blend modes to mix two layers using a callback function.
+
+1. Click **Custom Blend**
+2. Paste your function
+3. Click **Inject Blend**
+4. Your blend will appear in the **Blend** dropdown for each layer
+
+**Signature:**
+```js
+function myBlend(base, layer, ctx) {
+  // base  = current accumulated value
+  // layer = new layer value
+  // ctx   = { layer, layerIndex, x, y, z }
+  return (base + layer) * 0.5; // return 0..1
+}
+```
+
+Notes:
+- **Name matters**: injecting a function with the same name will overwrite the existing blend.
+- **Return range**: always return a value between 0 and 1.
+
 ### Quick Tips
 - Left-click + drag to pan the canvas
 - Scroll wheel to zoom in/out

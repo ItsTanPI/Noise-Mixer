@@ -83,7 +83,9 @@
     });
 
     const bSel = document.createElement('select');
-    ['avg', 'add', 'mul', 'max', 'min', 'diff'].forEach(b => {
+    const blendOptions = [...(NM.BLEND_MODES || ['avg', 'add', 'mul', 'max', 'min', 'diff']), ...Object.keys(NM.customBlends || {})];
+    if (l.blend && !blendOptions.includes(l.blend)) blendOptions.push(l.blend);
+    blendOptions.forEach(b => {
       const o = document.createElement('option');
       o.value = b;
       o.textContent = b.charAt(0).toUpperCase() + b.slice(1);
@@ -565,10 +567,40 @@
 
       const l = mkLayer();
       l.type = name;
+      l.params = {};
+      l.paramsMeta = {};
+      l.fixedMeta = {};
+      NM.ensureLayerParams(l);
       NM.applyDefaultsForType(l);
       addLayer(l);
 
       msg.textContent = name + ' injected! Signature: (x, y, z, seed, params) — add params via Custom Params';
+      msg.className = 'msg ok';
+    } catch (e) {
+      msg.textContent = 'Error: ' + e.message + ' (check function signature)';
+      msg.className = 'msg err';
+    }
+  }
+
+  function injectCustomBlend() {
+    const srcEl = document.getElementById('custom-blend-src');
+    const msg = document.getElementById('inject-blend-msg');
+    if (!srcEl || !msg) return;
+    const src = srcEl.value.trim();
+    msg.textContent = '';
+    msg.className = 'msg';
+
+    try {
+      const fn = new Function('return (' + src + ')')();
+      if (typeof fn !== 'function') throw new Error('Not a function');
+
+      const m = src.match(/function\s+(\w+)/);
+      const name = m ? m[1] : 'blend_' + Object.keys(NM.customBlends).length;
+      NM.customBlends[name] = fn;
+
+      renderLayers();
+
+      msg.textContent = name + ' blend injected! Signature: (base, layer, ctx) — return 0..1';
       msg.className = 'msg ok';
     } catch (e) {
       msg.textContent = 'Error: ' + e.message + ' (check function signature)';
@@ -922,5 +954,6 @@
   window.renderLayers = renderLayers;
   window.addLayer = addLayer;
   window.injectCustom = injectCustom;
+  window.injectCustomBlend = injectCustomBlend;
   window.openParamEditor = openParamEditor;
 })();

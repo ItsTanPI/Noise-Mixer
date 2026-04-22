@@ -14,6 +14,10 @@ function saveProject() {
       name: cf,
       code: customFns[cf].toString()
     })),
+    customBlends: Object.keys(customBlends || {}).map(cb => ({
+      name: cb,
+      code: customBlends[cb].toString()
+    })),
     customParamDefaults: customFnParamDefaults,
     customParamMeta: customFnParamMeta
   };
@@ -58,6 +62,17 @@ function loadProject(jsonString) {
             customFns[cf.name] = new Function('return (' + cf.code + ')')();
           } catch (e) {
             console.warn('Failed to restore custom function ' + cf.name + ':', e);
+          }
+        });
+      }
+
+      // Restore custom blends
+      if (data.customBlends && Array.isArray(data.customBlends)) {
+        data.customBlends.forEach(cb => {
+          try {
+            customBlends[cb.name] = new Function('return (' + cb.code + ')')();
+          } catch (e) {
+            console.warn('Failed to restore custom blend ' + cb.name + ':', e);
           }
         });
       }

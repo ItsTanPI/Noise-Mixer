@@ -65,8 +65,10 @@
   const customFns = {};
   const customFnParamDefaults = {};
   const customFnParamMeta = {};
+  const customBlends = {};
   const builtInParamDefaults = {};
   const builtInParamMeta = {};
+  const BLEND_MODES = ['avg', 'add', 'mul', 'max', 'min', 'diff'];
 
   function ensureLayerParams(l) {
     if (!l.params || typeof l.params !== 'object') l.params = {};
@@ -177,6 +179,8 @@
   NM.customFns = customFns;
   NM.customFnParamDefaults = customFnParamDefaults;
   NM.customFnParamMeta = customFnParamMeta;
+  NM.customBlends = customBlends;
+  NM.BLEND_MODES = BLEND_MODES;
   NM.builtInParamDefaults = builtInParamDefaults;
   NM.builtInParamMeta = builtInParamMeta;
   NM.ensureLayerParams = ensureLayerParams;
@@ -221,6 +225,8 @@
   window.customFns = customFns;
   window.customFnParamDefaults = customFnParamDefaults;
   window.customFnParamMeta = customFnParamMeta;
+  window.customBlends = customBlends;
+  window.BLEND_MODES = BLEND_MODES;
   window.builtInParamDefaults = builtInParamDefaults;
   window.builtInParamMeta = builtInParamMeta;
   window.ensureLayerParams = ensureLayerParams;
