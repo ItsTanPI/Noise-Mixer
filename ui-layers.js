@@ -567,6 +567,10 @@
 
       const l = mkLayer();
       l.type = name;
+      l.params = {};
+      l.paramsMeta = {};
+      l.fixedMeta = {};
+      NM.ensureLayerParams(l);
       NM.applyDefaultsForType(l);
       addLayer(l);
 
